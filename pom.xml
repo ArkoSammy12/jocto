@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <properties>
+        <maven.compiler.source>25</maven.compiler.source>
+        <maven.compiler.target>25</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.name>jocto</project.name>
+        <maven.build.timestamp.format>yyyy-MM-dd, HH:mm:ss</maven.build.timestamp.format>
+        <author>James Villarreal (ArkoSammy12)</author>
+    </properties>
+
+    <groupId>io.github.arkosammy12</groupId>
+    <artifactId>jocto</artifactId>
+
+    <!-- Change this for everything else (and in the child submodules too of course) -->
+    <version>0.0.1</version>
+    <packaging>pom</packaging>
+    <modules>
+        <module>core</module>
+        <module>cli</module>
+    </modules>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <version>6.1.0</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>info.picocli</groupId>
+                <artifactId>picocli</artifactId>
+                <version>4.7.7</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+</project>
