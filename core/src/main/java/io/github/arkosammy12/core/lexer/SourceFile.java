@@ -1,13 +1,11 @@
-package io.github.arkosammy12.core.util;
+package io.github.arkosammy12.core.lexer;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 public class SourceFile {
 
@@ -23,6 +21,10 @@ public class SourceFile {
 
     public int getLineSize() {
         return this.lines.size();
+    }
+
+    public SourceStream<SourceCharacter> createSourceCharacterStream() {
+        return SourceStream.ofLines(this.lines);
     }
 
     public String getLine(int row) {
@@ -53,11 +55,11 @@ public class SourceFile {
         return new SourceFile(lines);
     }
 
-    public Optional<Position> indexOf(String str) {
+    public Optional<SourcePosition> indexOf(String str) {
         for (int row = 0; row < this.getLineSize(); row++) {
             int column = this.getLine(row).indexOf(str);
             if (column >= 0) {
-                return Optional.of(new Position(row, column));
+                return Optional.of(new SourcePosition(row, column));
             }
         }
         return Optional.empty();
@@ -72,10 +74,10 @@ public class SourceFile {
     }
 
     public SourceFile subFile(int beginRow, int beginColumn, int endRow, int endColumn) {
-        return this.subFile(new Position(beginRow, beginColumn), new Position(endRow, endColumn));
+        return this.subFile(new SourcePosition(beginRow, beginColumn), new SourcePosition(endRow, endColumn));
     }
 
-    public SourceFile subFile(Position begin, Position end) {
+    public SourceFile subFile(SourcePosition begin, SourcePosition end) {
         if (begin.row() < 0) {
             throw new IndexOutOfBoundsException("The beginRow index cannot be less than 0!");
         }
@@ -120,11 +122,11 @@ public class SourceFile {
     }
 
     public SourceFile remove(int beginRow, int beginColumn, int endRow, int endColumn) {
-        return this.remove(new Position(beginRow, beginColumn), new Position(endRow, endColumn));
+        return this.remove(new SourcePosition(beginRow, beginColumn), new SourcePosition(endRow, endColumn));
     }
 
-    public SourceFile remove(Position begin, Position end) {
-        return this.subFile(new Position(0, 0), begin.fromRow(begin.row() + 1)).concatenate(this.subFile(end, new Position(this.getLineSize(), Integer.MAX_VALUE)));
+    public SourceFile remove(SourcePosition begin, SourcePosition end) {
+        return this.subFile(new SourcePosition(0, 0), begin.fromRow(begin.row() + 1)).concatenate(this.subFile(end, new SourcePosition(this.getLineSize(), Integer.MAX_VALUE)));
     }
 
     @Override

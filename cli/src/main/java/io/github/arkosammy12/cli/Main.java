@@ -1,7 +1,7 @@
 package io.github.arkosammy12.cli;
 
-import io.github.arkosammy12.core.util.Position;
-import io.github.arkosammy12.core.util.SourceFile;
+import io.github.arkosammy12.core.lexer.*;
+import io.github.arkosammy12.core.token.Token;
 
 import java.util.List;
 
@@ -9,27 +9,152 @@ public class Main {
 
     static void main(String[] args) {
         String test = """
-                0: 
-                1: Hello guys!!!
-                2:                 
-                3: hello people # this is a commena
-                4: 
-                5: # this is another commena
-                6: 
-                7: this is # a comment
-                8: 
+                ###########################################
+                #
+                #  Enchilada
+                #
+                #  Exercise every feature of the Octo
+                #  assembly language at least once.
+                #  The program itself is gibberish,
+                #  but compiler output can be compared
+                #  to a reference binary.
+                #
+                ###########################################
+                
+                0xAB 42 0b1100110
+                :byte 0x23 :byte { 2 + 3 }
+                
+                : main
+                	v0 := v1
+                	v2 := random 0xAB
+                	v3 := key
+                	v4 := delay
+                	v5 += 10
+                	v5 += v5
+                	v1 -= 10
+                	v1 -= v2
+                	v1 |= v2
+                	v1 &= v2
+                	v1 ^= v2
+                	v2 =- v3
+                	v4 <<= v5
+                	v5 >>= v6
+                : backward
+                	:next nx
+                	i := nx
+                	:unpack 0xA backward
+                	:unpack 0xA forward
+                	:breakpoint "some text"
+                	:breakpoint single-tok
+                	:monitor vA 2
+                	:monitor vB "%2i"
+                	:monitor backward 2
+                	:monitor backward "%2i"
+                	:assert { 2 == 2 }
+                	:assert "with message" { 3 > 1 }
+                	:alias beans v2
+                	:alias chips { 2 + 3 }
+                	beans := 0xAB
+                	chips := 0xCD
+                	forward # (call)
+                	:call forward
+                	:const little 5
+                	v1 := little
+                	:calc two { 1 }
+                	:calc two { two + two } # re-define
+                	return ;
+                	clear
+                	bcd v3
+                	delay := v1
+                	buzzer := v2
+                	jump0 backward
+                	jump0 forward
+                	jump backward
+                	jump forward
+                	native 0x123
+                	audio
+                	scroll-down little
+                	scroll-up 3
+                	scroll-left
+                	scroll-right
+                	exit
+                	lores
+                	hires
+                	sprite v2 v3 little
+                	sprite v3 v4 0
+                	plane 3
+                	saveflags v2
+                	loadflags v3
+                	load v1
+                	save v2
+                	load v3 - beans
+                	save chips - v1
+                	i := little
+                	i := long 0xABCD
+                	i := long backward
+                	i := long forward
+                	i := hex v2
+                	i := bighex v3
+                	i += vf
+                	if vf   key then
+                	if va  -key then
+                	if vb == OCTO_KEY_E then
+                	if vc == vd then
+                	if vb != 23 then
+                	if vc != vd then
+                	if vb >  vd then
+                	if vc <  vd then
+                	if vb >= vd then
+                	if vc <= vd then
+                	if vb >  22 then
+                	if vc <  33 then
+                	if vb >= 44 then
+                	if vc <= 55 then
+                	if v0 == 5 begin v2 := 3 end
+                	if v0 key begin v2 := 3 end
+                	if v0 == 3 begin v2 := 3 else v5 := 4 end
+                	loop v1 := 5 again
+                	loop while v1 == 2 while v3 > 5 again
+                	backward
+                	forward
+                : forward
+                	v0 := 5
+                	:org { HERE + 5 }
+                	:byte 0x45
+                	:calc slen { 10 + strlen "ABC\\tDE" }
+                	:byte slen
+                	:calc ops { 3 + 2 * - 5 }
+                	:byte ops
+                	:macro beef A B { :byte A  B := 5  :byte { CALLS } }
+                	beef 10 v5
+                	beef 12 v6
+                	beef 14 v7
+                	:macro noargs { :byte 22 }
+                	noargs
+                	noargs
+                	:stringmode str "ABCD\\\\" { :byte 0xFA :byte { CALLS } :byte { CHAR } :byte { INDEX } :byte { VALUE } }
+                	:stringmode str "EFGH\\0" { :byte 0xFB :byte { CALLS } :byte { CHAR } :byte { INDEX } :byte { VALUE } }
+                	str "ABFG\\\\HA"
+                	str "DD\\0CB"
+                	:byte { 2.5 + 3.5 } # float literals
+                	:org 23
+                	0xFE
                 """;
 
         SourceFile sourceFile = new SourceFile(List.of(test.split("\n")));
-
-        IO.println("Original: \n" + sourceFile);
-
-        Position numeralPosition;
-        while ((numeralPosition = sourceFile.indexOf("#").orElse(null)) != null) {
-            sourceFile = sourceFile.remove(numeralPosition.row(), numeralPosition.column(), numeralPosition.row());
+        OctoLexer octoLexer = new OctoLexer();
+        LexerResult lexerResult = octoLexer.tokenize(sourceFile.createSourceCharacterStream());
+        switch (lexerResult) {
+            case LexerResult.Ok(SourceStream<Token> tokenStream) -> {
+                while (!tokenStream.isEmpty()) {
+                    tokenStream.poll().ifPresent(IO::println);
+                }
+            }
+            case LexerResult.Error(String error, SourcePosition sourcePosition) -> IO.println("""
+                    Assembly error!
+                    (%d:%d) %s
+                    """.formatted(sourcePosition.row() + 1, sourcePosition.column() + 1, error));
         }
-
-        IO.println("\nModified: \n" + sourceFile);
     }
 
 }
