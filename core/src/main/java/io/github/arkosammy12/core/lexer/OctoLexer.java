@@ -25,11 +25,10 @@ public class OctoLexer {
 
             // Finish the pending token once we have moved on to the next row, if we have one
             if (newSourceCharacter.sourcePosition().row() > tokenizerContext.currentRow) {
-                if (tokenizerContext.state == TokenizerState.STRING_TOKEN) {
-                    // Fail on string cutoff by a new line
-                    return new LexerResult.Error("Unclosed string literal!", tokenizerContext.tokenPosition);
+                // Only finish a pending token if it is a regular token. If it is a string token, then we can continue building it on the following row
+                if (tokenizerContext.state == TokenizerState.TOKEN) {
+                    this.finishToken(tokenizerContext);
                 }
-                this.finishToken(tokenizerContext);
                 tokenizerContext.currentRow = newSourceCharacter.sourcePosition().row();
             }
 
@@ -126,7 +125,6 @@ public class OctoLexer {
         WHITESPACE,
         TOKEN,
         STRING_TOKEN
-
     }
 
 }
