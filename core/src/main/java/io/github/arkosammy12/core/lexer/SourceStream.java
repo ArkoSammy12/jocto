@@ -7,6 +7,10 @@ public class SourceStream<T> {
 
     private final Deque<T> streamDeque = new ArrayDeque<>();
 
+    public SourceStream(SourceStream<T> other) {
+        this.streamDeque.addAll(other.streamDeque);
+    }
+
     public SourceStream(Collection<T> elements) {
         this.streamDeque.addAll(elements);
     }
@@ -25,6 +29,10 @@ public class SourceStream<T> {
 
     public boolean isEmpty() {
         return this.streamDeque.isEmpty();
+    }
+
+    public void offerFront(T value) {
+        this.streamDeque.offerFirst(value);
     }
 
     public Optional<T> poll() {

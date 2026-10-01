@@ -17,6 +17,22 @@ public final class IntegerLiteralToken extends LiteralToken {
         return this.value;
     }
 
+    public boolean isUnsigned4Bits() {
+        return this.value >= 0 && this.value <= 15;
+    }
+
+    public boolean is8Bits() {
+        return this.value >= -128 && this.value <= 255;
+    }
+
+    public boolean isUnsigned12Bits() {
+        return this.value >= 0 && this.value <= 0xFFF;
+    }
+
+    public boolean isUnsigned16Bits() {
+        return this.value >= 0 && this.value <= 0xFFFF;
+    }
+
     @Override
     public String toString() {
         return "IntegerLiteralToken[%s, value=%d]".formatted(this.getLexemeAndPositionString(), this.value);

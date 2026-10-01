@@ -5,7 +5,9 @@ import io.github.arkosammy12.core.parser.InstructionStatementKeyword;
 
 import java.util.Optional;
 
-public sealed interface InstructionStatementNameToken extends Token permits NonSymbolInstructionStatementKeywordToken, SemicolonToken {
+public sealed interface InstructionStatementNameToken extends Token permits
+        NonSymbolInstructionStatementKeywordToken,
+        SemicolonToken {
 
     InstructionStatementKeyword getInstructionStatementKeyword();
 

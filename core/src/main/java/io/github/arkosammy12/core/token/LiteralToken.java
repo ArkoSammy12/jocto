@@ -4,7 +4,11 @@ import io.github.arkosammy12.core.lexer.SourcePosition;
 
 import java.util.Optional;
 
-public abstract sealed class LiteralToken extends AbstractToken permits FloatLiteralToken, IntegerLiteralToken, RegisterLiteralToken, StringLiteralToken {
+public abstract sealed class LiteralToken extends AbstractToken permits
+        FloatLiteralToken,
+        IntegerLiteralToken,
+        RegisterLiteralToken,
+        StringLiteralToken {
 
     public LiteralToken(String lexeme, SourcePosition sourcePosition) {
         super(lexeme, sourcePosition);

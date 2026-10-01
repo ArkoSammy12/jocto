@@ -6,7 +6,12 @@ import io.github.arkosammy12.core.lexer.SourcePosition;
 import java.util.Optional;
 import java.util.function.Function;
 
-public sealed interface Token permits AbstractToken, AssignmentKeywordToken, CalcOperatorToken, ConditionalOperatorToken, InstructionStatementNameToken {
+public sealed interface Token permits
+        AbstractToken,
+        AssignmentKeywordToken,
+        CalcOperatorToken,
+        ConditionalOperatorToken,
+        InstructionStatementNameToken {
 
     String getLexeme();
 
