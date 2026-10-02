@@ -12,7 +12,7 @@ public non-sealed class IdentifierToken extends NameToken {
 
     @Override
     public String toString() {
-        return "IdentifierToken[%s]".formatted(this.getLexemeAndPositionString());
+        return "IdentifierToken[%s]".formatted(this.getBaseStringContents());
     }
 
     public static Optional<? extends NameToken> tryParse(String lexeme, SourcePosition sourcePosition) {

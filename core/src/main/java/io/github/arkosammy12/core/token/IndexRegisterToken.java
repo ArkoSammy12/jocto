@@ -12,7 +12,7 @@ public final class IndexRegisterToken extends ReservedNameToken {
 
     @Override
     public String toString() {
-        return "IndexRegisterToken[%s]".formatted(this.getLexemeAndPositionString());
+        return "IndexRegisterToken[%s]".formatted(this.getBaseStringContents());
     }
 
     public static Optional<IndexRegisterToken> tryParse(String lexeme, SourcePosition sourcePosition) {

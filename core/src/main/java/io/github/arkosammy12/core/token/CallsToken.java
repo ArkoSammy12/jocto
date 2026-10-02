@@ -12,7 +12,7 @@ public final class CallsToken extends IdentifierToken {
 
     @Override
     public String toString() {
-        return "MacroCALLSIdentifierToken[%s]".formatted(this.getLexemeAndPositionString());
+        return "MacroCALLSIdentifierToken[%s]".formatted(this.getBaseStringContents());
     }
 
     public static Optional<CallsToken> tryParse(String lexeme, SourcePosition sourcePosition) {

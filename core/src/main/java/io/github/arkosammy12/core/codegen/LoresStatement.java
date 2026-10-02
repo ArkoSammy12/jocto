@@ -7,7 +7,7 @@ public final class LoresStatement extends Statement {
     }
 
     @Override
-    int getSizeInBytes() {
+    public int getSizeInBytes() {
         return 2;
     }
 

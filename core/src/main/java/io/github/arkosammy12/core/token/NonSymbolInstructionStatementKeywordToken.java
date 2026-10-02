@@ -22,7 +22,7 @@ public final class NonSymbolInstructionStatementKeywordToken extends ReservedNam
 
     @Override
     public String toString() {
-        return "InstructionStatementKeywordToken[%s, keyword=%s]".formatted(this.getLexemeAndPositionString(), this.instructionStatementLexeme.name());
+        return "InstructionStatementKeywordToken[%s, keyword=%s]".formatted(this.getBaseStringContents(), this.instructionStatementLexeme.name());
     }
 
     public static Optional<NonSymbolInstructionStatementKeywordToken> tryParse(String lexeme, SourcePosition sourcePosition) {

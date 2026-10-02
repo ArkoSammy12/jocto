@@ -10,7 +10,7 @@ public final class ScrollDownStatement extends Statement {
     }
 
     @Override
-    int getSizeInBytes() {
+    public int getSizeInBytes() {
         return 2;
     }
 

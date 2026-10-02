@@ -12,7 +12,7 @@ public final class LeftShiftRegisterAssignment extends Assignment {
     }
 
     @Override
-    int getSizeInBytes() {
+    public int getSizeInBytes() {
         return 2;
     }
 

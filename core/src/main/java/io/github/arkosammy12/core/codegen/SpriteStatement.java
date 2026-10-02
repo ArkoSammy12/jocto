@@ -14,7 +14,7 @@ public final class SpriteStatement extends Statement {
     }
 
     @Override
-    int getSizeInBytes() {
+    public int getSizeInBytes() {
         return 2;
     }
 

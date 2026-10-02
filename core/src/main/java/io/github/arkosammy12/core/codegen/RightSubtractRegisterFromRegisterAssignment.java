@@ -12,7 +12,7 @@ public final class RightSubtractRegisterFromRegisterAssignment extends Assignmen
     }
 
     @Override
-    int getSizeInBytes() {
+    public int getSizeInBytes() {
         return 2;
     }
 

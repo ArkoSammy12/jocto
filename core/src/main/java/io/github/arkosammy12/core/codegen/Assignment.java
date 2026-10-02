@@ -6,7 +6,6 @@ public sealed abstract class Assignment extends Instruction permits
         BitwiseAndRegisterAssignment,
         BitwiseOrRegisterAssignment,
         BitwiseXorRegisterAssignment,
-        CopyRegisterAssignment,
         IncrementIndexRegisterAssignment,
         LeftShiftRegisterAssignment,
         LeftSubtractRegisterFromRegisterAssignment,

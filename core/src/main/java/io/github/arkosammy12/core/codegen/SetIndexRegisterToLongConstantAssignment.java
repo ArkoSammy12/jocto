@@ -12,7 +12,7 @@ public final class SetIndexRegisterToLongConstantAssignment extends Assignment {
     }
 
     @Override
-    int getSizeInBytes() {
+    public int getSizeInBytes() {
         return 4;
     }
 

@@ -24,7 +24,7 @@ public non-sealed class DashToken extends IdentifierToken implements AssignmentK
 
     @Override
     public String toString() {
-        return "DashToken[%s]".formatted(this.getLexemeAndPositionString());
+        return "DashToken[%s]".formatted(this.getBaseStringContents());
     }
 
     public static Optional<DashToken> tryPase(String lexeme, SourcePosition sourcePosition) {

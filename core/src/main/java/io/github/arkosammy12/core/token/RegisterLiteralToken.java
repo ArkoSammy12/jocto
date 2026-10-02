@@ -24,7 +24,7 @@ public final class RegisterLiteralToken extends LiteralToken {
 
     @Override
     public String toString() {
-        return "RegisterLiteralIndex[%s, registerIndex=%d]".formatted(this.getLexemeAndPositionString(), this.registerIndex);
+        return "RegisterLiteralIndex[%s, registerIndex=%d]".formatted(this.getBaseStringContents(), this.registerIndex);
     }
 
     public static Optional<RegisterLiteralToken> tryParse(String lexeme, SourcePosition sourcePosition) {

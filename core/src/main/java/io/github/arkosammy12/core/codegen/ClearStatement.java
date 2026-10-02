@@ -7,7 +7,7 @@ public final class ClearStatement extends Statement {
     }
 
     @Override
-    int getSizeInBytes() {
+    public int getSizeInBytes() {
         return 2;
     }
 

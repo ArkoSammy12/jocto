@@ -20,7 +20,7 @@ public final class DirectiveToken extends ReservedNameToken {
 
     @Override
     public String toString() {
-        return "DirectiveToken[%s, directive=%s]".formatted(this.getLexemeAndPositionString(), this.directiveLexeme.name());
+        return "DirectiveToken[%s, directive=%s]".formatted(this.getBaseStringContents(), this.directiveLexeme.name());
     }
 
     public static Optional<DirectiveToken> tryParse(String lexeme, SourcePosition sourcePosition) {

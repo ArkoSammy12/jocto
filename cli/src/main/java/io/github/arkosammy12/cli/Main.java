@@ -1,9 +1,15 @@
 package io.github.arkosammy12.cli;
 
+import io.github.arkosammy12.core.codegen.CodeElement;
 import io.github.arkosammy12.core.lexer.*;
+import io.github.arkosammy12.core.parser.OctoParser;
+import io.github.arkosammy12.core.parser.ParserResult;
+import io.github.arkosammy12.core.parser.directive.LabelDefinition;
 import io.github.arkosammy12.core.token.Token;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 public class Main {
 
@@ -11,134 +17,30 @@ public class Main {
         String test = """
                 ###########################################
                 #
-                #  Enchilada
+                #  Tank
                 #
-                #  Exercise every feature of the Octo
-                #  assembly language at least once.
-                #  The program itself is gibberish,
-                #  but compiler output can be compared
-                #  to a reference binary.
+                #  Classic Chip8 program translated from
+                #  VIPer Volume 1 Issue 1 (June 1978), pg 12-14
+                #  https://github.com/mattmikolay/viper/blob/master/volume1/issue1.pdf
+                #
+                #  Press 2/E/S/Q to move the tank.
                 #
                 ###########################################
+               
                 
-                0xAB 42 0b1100110
-                :byte 0x23 :byte { 2 + 3 }
+                : up    v2 += -1  i := tankup    ;
+                : down  v2 +=  1  i := tankdown  ;
+                : right v1 += -1  i := tankright ;
+                : left  v1 +=  1  i := tankleft  ;
                 
                 : main
-                	v0 := v1
-                	v2 := random 0xAB
-                	v3 := key
-                	v4 := delay
-                	v5 += 10
-                	v5 += v5
-                	v1 -= 10
-                	v1 -= v2
-                	v1 |= v2
-                	v1 &= v2
-                	v1 ^= v2
-                	v2 =- v3
-                	v4 <<= v5
-                	v5 >>= v6
-                : backward
-                	:next nx
-                	i := nx
-                	:unpack 0xA backward
-                	:unpack 0xA forward
-                	:breakpoint "some text"
-                	:breakpoint single-tok
-                	:monitor vA 2
-                	:monitor vB "%2i"
-                	:monitor backward 2
-                	:monitor backward "%2i"
-                	:assert { 2 == 2 }
-                	:assert "with message" { 3 > 1 }
-                	:alias beans v2
-                	:alias chips { 2 + 3 }
-                	beans := 0xAB
-                	chips := 0xCD
-                	forward # (call)
-                	:call forward
-                	:const little 5
-                	v1 := little
-                	:calc two { 1 }
-                	:calc two { two + two } # re-define
-                	return ;
-                	clear
-                	bcd v3
-                	delay := v1
-                	buzzer := v2
-                	jump0 backward
-                	jump0 forward
-                	jump backward
-                	jump forward
-                	native 0x123
-                	audio
-                	scroll-down little
-                	scroll-up 3
-                	scroll-left
-                	scroll-right
-                	exit
-                	lores
-                	hires
-                	sprite v2 v3 little
-                	sprite v3 v4 0
-                	plane 3
-                	saveflags v2
-                	loadflags v3
-                	load v1
-                	save v2
-                	load v3 - beans
-                	save chips - v1
-                	i := little
-                	i := long 0xABCD
-                	i := long backward
-                	i := long forward
-                	i := hex v2
-                	i := bighex v3
-                	i += vf
-                	if vf   key then
-                	if va  -key then
-                	if vb == OCTO_KEY_E then
-                	if vc == vd then
-                	if vb != 23 then
-                	if vc != vd then
-                	if vb >  vd then
-                	if vc <  vd then
-                	if vb >= vd then
-                	if vc <= vd then
-                	if vb >  22 then
-                	if vc <  33 then
-                	if vb >= 44 then
-                	if vc <= 55 then
-                	if v0 == 5 begin v2 := 3 end
-                	if v0 key begin v2 := 3 end
-                	if v0 == 3 begin v2 := 3 else v5 := 4 end
-                	loop v1 := 5 again
-                	loop while v1 == 2 while v3 > 5 again
-                	backward
-                	forward
-                : forward
-                	v0 := 5
-                	:org { HERE + 5 }
-                	:byte 0x45
-                	:calc slen { 10 + strlen "ABC\\tDE" }
-                	:byte slen
-                	:calc ops { 3 + 2 * - 5 }
-                	:byte ops
-                	:macro beef A B { :byte A  B := 5  :byte { CALLS } }
-                	beef 10 v5
-                	beef 12 v6
-                	beef 14 v7
-                	:macro noargs { :byte 22 }
-                	noargs
-                	noargs
-                	:stringmode str "ABCD\\\\" { :byte 0xFA :byte { CALLS } :byte { CHAR } :byte { INDEX } :byte { VALUE } }
-                	:stringmode str "EFGH\\0" { :byte 0xFB :byte { CALLS } :byte { CHAR } :byte { INDEX } :byte { VALUE } }
-                	str "ABFG\\\\HA"
-                	str "DD\\0CB"
-                	:byte { 2.5 + 3.5 } # float literals
-                	:org 23
-                	0xFE
+                  v1 := 0x20
+                  v2 := 0x10
+                  i := tankup
+                
+                    sprite v1 v2 7
+                    v0 := key
+                    sprite v1 v2 7
                 """;
 
         SourceFile sourceFile = new SourceFile(List.of(test.split("\n")));
@@ -146,8 +48,19 @@ public class Main {
         LexerResult lexerResult = octoLexer.tokenize(sourceFile.createSourceCharacterStream());
         switch (lexerResult) {
             case LexerResult.Ok(SourceStream<Token> tokenStream) -> {
-                while (!tokenStream.isEmpty()) {
-                    tokenStream.poll().ifPresent(IO::println);
+                tokenStream.forEach(IO::println);
+                OctoParser octoParser = new OctoParser();
+                ParserResult parserResult = octoParser.parseTokens(tokenStream);
+                switch (parserResult) {
+                    case ParserResult.Ok(Collection<CodeElement> codeElements, Map<String, LabelDefinition> labelDefinitions) -> {
+                        for (CodeElement codeElement :codeElements) {
+                            IO.println(codeElement);
+                        }
+                    }
+                    case ParserResult.Error(String error, SourcePosition sourcePosition) -> IO.println("""
+                    Assembly error!
+                    (%d:%d) %s
+                    """.formatted(sourcePosition.row() + 1, sourcePosition.column() + 1, error));
                 }
             }
             case LexerResult.Error(String error, SourcePosition sourcePosition) -> IO.println("""

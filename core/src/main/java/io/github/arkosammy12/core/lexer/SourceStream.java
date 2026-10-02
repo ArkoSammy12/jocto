@@ -1,6 +1,7 @@
 package io.github.arkosammy12.core.lexer;
 
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 public class SourceStream<T> {
@@ -33,6 +34,12 @@ public class SourceStream<T> {
 
     public void offerFront(T value) {
         this.streamDeque.offerFirst(value);
+    }
+
+    public void forEach(Consumer<T> consumer) {
+        for (T t : this.streamDeque) {
+            consumer.accept(t);
+        }
     }
 
     public Optional<T> poll() {

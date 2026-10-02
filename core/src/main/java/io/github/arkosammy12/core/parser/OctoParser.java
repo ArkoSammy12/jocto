@@ -9,21 +9,39 @@ import io.github.arkosammy12.core.token.*;
 
 import java.util.*;
 
-public class Chip8Parser {
+public class OctoParser {
 
     public ParserResult parseTokens(SourceStream<Token> tokenStream) {
         ParserContext parserContext = new ParserContext(tokenStream);
         try {
-            while (!parserContext.tokenStream.isEmpty()) {
-                Optional<Token> token = parserContext.tokenStream.poll();
-                if (token.isPresent()) {
-                    this.parseToken(parserContext, token.get()).ifPresent(parserContext.codeElements::add);
-                }
-            }
+            this.parseTopLevel(parserContext);
             return new ParserResult.Ok(List.copyOf(parserContext.codeElements), parserContext.getLabelDefinitions());
         } catch (ParserException e) {
             return e.toErrorResult();
         }
+    }
+
+    private void parseTopLevel(ParserContext parserContext) throws ParserException {
+        while (!parserContext.tokenStream.isEmpty()) {
+            Optional<Token> optionalToken = parserContext.tokenStream.poll();
+            if (optionalToken.isPresent()) {
+                Token token = optionalToken.get();
+                Optional<CodeElement> optionalCodeElement = this.parseToken(parserContext, token);
+                if (optionalCodeElement.isPresent()) {
+                    CodeElement codeElement = optionalCodeElement.get();
+                    parserContext.codeElements.add(codeElement);
+                    parserContext.incrementHere(token, codeElement);
+                }
+            }
+        }
+    }
+
+    private Optional<CodeElement> parseIfBlockKeywordToken(ParserContext parserContext, IfBlockKeywordToken ifBlockKeywordToken) {
+        return Optional.empty();
+    }
+
+    private Optional<CodeElement> parseLoopBlockKeywordToken(ParserContext parserContext, LoopBlockKeywordToken loopBlockKeywordToken) {
+        return Optional.empty();
     }
 
     private Optional<CodeElement> parseToken(ParserContext parserContext, Token token) throws ParserException  {
@@ -33,33 +51,35 @@ public class Chip8Parser {
             case LiteralToken literalToken -> this.parseLiteral(parserContext, literalToken);
             case IndexRegisterToken indexRegisterToken -> this.parseIndexRegister(parserContext, indexRegisterToken);
             case AssignmentKeywordToken assignmentKeywordToken -> this.parseAssignmentKeywordToken(parserContext, assignmentKeywordToken);
+            case IfBlockKeywordToken ifBlockKeywordToken -> this.parseIfBlockKeywordToken(parserContext, ifBlockKeywordToken);
+            case LoopBlockKeywordToken loopBlockKeywordToken -> this.parseLoopBlockKeywordToken(parserContext, loopBlockKeywordToken);
             default -> this.checkReservedName(parserContext, token);
         };
     }
 
     private Optional<CodeElement> parseInstructionStatementNameToken(ParserContext parserContext, InstructionStatementNameToken instructionStatementNameToken) throws ParserException {
         return switch (instructionStatementNameToken) {
-            case SemicolonToken _ -> Optional.of(new ReturnStatement(parserContext.currentOffset));
+            case SemicolonToken _ -> Optional.of(new ReturnStatement(parserContext.here));
             case NonSymbolInstructionStatementKeywordToken nonSymbolInstructionStatementKeywordToken -> switch (nonSymbolInstructionStatementKeywordToken.getInstructionStatementKeyword()) {
-                case RETURN -> Optional.of(new ReturnStatement(parserContext.currentOffset));
-                case CLEAR -> Optional.of(new ClearStatement(parserContext.currentOffset));
-                case BCD -> Optional.of(new BCDStatement(parserContext.currentOffset, this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected register literal after bcd statement!", instructionStatementNameToken.getSourcePosition()).getRegisterIndex()));
+                case RETURN -> Optional.of(new ReturnStatement(parserContext.here));
+                case CLEAR -> Optional.of(new ClearStatement(parserContext.here));
+                case BCD -> Optional.of(new BCDStatement(parserContext.here, this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected register literal after bcd statement!", instructionStatementNameToken.getSourcePosition()).getRegisterIndex()));
                 case SAVE -> {
-                    RegisterLiteralToken firstRegister = this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected register literal after save statement!", instructionStatementNameToken.getSourcePosition());
+                    RegisterLiteralToken vx = this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected register literal after save statement!", instructionStatementNameToken.getSourcePosition());
                     Optional<DashToken> optionalDashToken = this.peekTokenAndPollIfPresent(DashToken.class, parserContext);
                     if (optionalDashToken.isPresent()) {
-                        yield Optional.of(new SaveFlagsStatement(parserContext.currentOffset, firstRegister.getRegisterIndex(), this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected register literal after '-' in save instruction!", instructionStatementNameToken.getSourcePosition()).getRegisterIndex()));
+                        yield Optional.of(new SaveRegistersStatement(parserContext.here, vx.getRegisterIndex(), this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected register literal after '-' in save instruction!", instructionStatementNameToken.getSourcePosition()).getRegisterIndex()));
                     } else {
-                        yield Optional.of(new SaveFlagsStatement(parserContext.currentOffset, firstRegister.getRegisterIndex()));
+                        yield Optional.of(new SaveRegistersStatement(parserContext.here, vx.getRegisterIndex()));
                     }
                 }
                 case LOAD -> {
-                    RegisterLiteralToken firstRegister = this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected register literal after save instruction", instructionStatementNameToken.getSourcePosition());
+                    RegisterLiteralToken vx = this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected register literal after save instruction", instructionStatementNameToken.getSourcePosition());
                     Optional<DashToken> optionalDashToken = this.peekTokenAndPollIfPresent(DashToken.class, parserContext);
                     if (optionalDashToken.isPresent()) {
-                        yield Optional.of(new LoadFlagsStatement(parserContext.currentOffset, firstRegister.getRegisterIndex(), this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected register literal after '-' in save instruction!", instructionStatementNameToken.getSourcePosition()).getRegisterIndex()));
+                        yield Optional.of(new LoadRegistersStatement(parserContext.here, vx.getRegisterIndex(), this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected register literal after '-' in save instruction!", instructionStatementNameToken.getSourcePosition()).getRegisterIndex()));
                     } else {
-                        yield Optional.of(new LoadFlagsStatement(parserContext.currentOffset, firstRegister.getRegisterIndex()));
+                        yield Optional.of(new LoadRegistersStatement(parserContext.here, vx.getRegisterIndex()));
                     }
                 }
                 case SPRITE -> {
@@ -69,7 +89,7 @@ public class Chip8Parser {
                     if (!n.isUnsigned4Bits()) {
                         throw new ParserException("Sprite statement argument %d for 'n' does not fit is not in the range [0, 15]".formatted(n.getValue()), instructionStatementNameToken.getSourcePosition());
                     }
-                    yield Optional.of(new SpriteStatement(parserContext.currentOffset, vx.getRegisterIndex(), vy.getRegisterIndex(), n.getValue()));
+                    yield Optional.of(new SpriteStatement(parserContext.here, vx.getRegisterIndex(), vy.getRegisterIndex(), n.getValue()));
                 }
                 case JUMP -> {
                     Token token = this.pollTokenOrThrow(parserContext, "Expected integer or label argument after jump statement!", instructionStatementNameToken.getSourcePosition());
@@ -77,9 +97,9 @@ public class Chip8Parser {
                         if (!n.isUnsigned12Bits()) {
                             throw new ParserException("Jump statement target %d does not fit in 12 bits!".formatted(n.getValue()), instructionStatementNameToken.getSourcePosition());
                         }
-                        yield Optional.of(new JumpStatement(parserContext.currentOffset, new AddressArgument.Value(n.getValue())));
+                        yield Optional.of(new JumpStatement(parserContext.here, new AddressArgument.Value(n.getValue())));
                     } else {
-                        yield Optional.of(new JumpStatement(parserContext.currentOffset, new AddressArgument.LabelReference(token.getLexeme())));
+                        yield Optional.of(new JumpStatement(parserContext.here, new AddressArgument.LabelReference(token.getLexeme())));
                     }
                 }
                 case JUMP0 -> {
@@ -88,35 +108,37 @@ public class Chip8Parser {
                         if (!n.isUnsigned12Bits()) {
                             throw new ParserException("Jump0 statement target %d does not fit in 12 bits!".formatted(n.getValue()), instructionStatementNameToken.getSourcePosition());
                         }
-                        yield Optional.of(new JumpZeroStatement(parserContext.currentOffset, new AddressArgument.Value(n.getValue())));
+                        yield Optional.of(new JumpZeroStatement(parserContext.here, new AddressArgument.Value(n.getValue())));
                     } else {
-                        yield Optional.of(new JumpZeroStatement(parserContext.currentOffset, new AddressArgument.LabelReference(token.getLexeme())));
+                        yield Optional.of(new JumpZeroStatement(parserContext.here, new AddressArgument.LabelReference(token.getLexeme())));
                     }
                 }
-                case HIRES -> Optional.of(new HiresStatement(parserContext.currentOffset));
-                case LORES -> Optional.of(new LoresStatement(parserContext.currentOffset));
+                case HIRES -> Optional.of(new HiresStatement(parserContext.here));
+                case LORES -> Optional.of(new LoresStatement(parserContext.here));
                 case SCROLL_DOWN -> {
                     IntegerLiteralToken n = this.pollTokenOrThrow(IntegerLiteralToken.class, parserContext, "Expected integer literal after 'vy' argument in scroll-down statement!", instructionStatementNameToken.getSourcePosition());
                     if (!n.isUnsigned4Bits()) {
                         throw new ParserException("Scroll down statement argument %d for 'n' does not fit is not in the range [0, 15]".formatted(n.getValue()), instructionStatementNameToken.getSourcePosition());
                     }
-                    yield Optional.of(new ScrollDownStatement(parserContext.currentOffset, n.getValue()));
+                    yield Optional.of(new ScrollDownStatement(parserContext.here, n.getValue()));
                 }
-                case SCROLL_LEFT -> Optional.of(new ScrollLeftStatement(parserContext.currentOffset));
-                case SCROLL_RIGHT -> Optional.of(new ScrollRightStatement(parserContext.currentOffset));
-                case EXIT -> Optional.of(new ExitStatement(parserContext.currentOffset));
+                case SCROLL_LEFT -> Optional.of(new ScrollLeftStatement(parserContext.here));
+                case SCROLL_RIGHT -> Optional.of(new ScrollRightStatement(parserContext.here));
+                case EXIT -> Optional.of(new ExitStatement(parserContext.here));
+                case SAVE_FLAGS -> Optional.of(new SaveFlagsStatement(parserContext.here, this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected 'vx' argument after saveflags statement!", instructionStatementNameToken.getSourcePosition()).getRegisterIndex()));
+                case LOAD_FLAGS -> Optional.of(new LoadFlagsStatement(parserContext.here, this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected 'vx' argument after loadflags statement!", instructionStatementNameToken.getSourcePosition()).getRegisterIndex()));
                 case PLANE -> {
                     IntegerLiteralToken n = this.pollTokenOrThrow(IntegerLiteralToken.class, parserContext, "Expected integer literal after 'vy' argument in plane statement!", instructionStatementNameToken.getSourcePosition());
                     if (!n.isUnsigned4Bits()) {
                         throw new ParserException("Plane statement argument %d for 'n' does not fit is not in the range [0, 15]".formatted(n.getValue()), instructionStatementNameToken.getSourcePosition());
                     }
-                    yield Optional.of(new PlaneStatement(parserContext.currentOffset, n.getValue()));
+                    yield Optional.of(new PlaneStatement(parserContext.here, n.getValue()));
                 }
-                case AUDIO -> Optional.of(new AudioStatement(parserContext.currentOffset));
+                case AUDIO -> Optional.of(new AudioStatement(parserContext.here));
                 case PITCH -> {
                     AssignmentOperatorToken assignmentOperatorToken = this.pollTokenOrThrow(AssignmentOperatorToken.class, parserContext, "Expected assignment operator ':=' after pitch statement!", instructionStatementNameToken.getSourcePosition());
                     if (assignmentOperatorToken.getAssignmentOperation() == AssignmentOperation.SET) {
-                        yield Optional.of(new SetPitchAssignment(parserContext.currentOffset, this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected register literal as pitch statement argument!", instructionStatementNameToken.getSourcePosition()).getRegisterIndex()));
+                        yield Optional.of(new SetPitchAssignment(parserContext.here, this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected register literal as pitch statement argument!", instructionStatementNameToken.getSourcePosition()).getRegisterIndex()));
                     } else {
                         throw new ParserException("Unexpected operator '%s' after pitch statement".formatted(assignmentOperatorToken.getLexeme()), instructionStatementNameToken.getSourcePosition());
                     }
@@ -126,9 +148,8 @@ public class Chip8Parser {
                     if (!n.isUnsigned4Bits()) {
                         throw new ParserException("Scroll up statement argument %d for 'n' does not fit is not in the range [0, 15]".formatted(n.getValue()), instructionStatementNameToken.getSourcePosition());
                     }
-                    yield Optional.of(new ScrollUpStatement(parserContext.currentOffset, n.getValue()));
+                    yield Optional.of(new ScrollUpStatement(parserContext.here, n.getValue()));
                 }
-                default -> this.checkReservedName(parserContext, instructionStatementNameToken);
             };
         };
     }
@@ -136,10 +157,14 @@ public class Chip8Parser {
     private Optional<CodeElement> parseLiteral(ParserContext parserContext, LiteralToken literalToken) throws ParserException {
         return switch (literalToken) {
             case RegisterLiteralToken registerLiteralToken -> this.parseRegisterLiteral(parserContext, registerLiteralToken);
-            case IntegerLiteralToken integerLiteralToken -> {}
-            case FloatLiteralToken floatLiteralToken -> {}
-            case StringLiteralToken stringLiteralToken -> {}
-            default -> this.checkReservedName(parserContext, literalToken);
+            case IntegerLiteralToken integerLiteralToken -> {
+                if (!integerLiteralToken.is8Bits()) {
+                    throw new ParserException("Raw integer literal '%d' does not fit in 8 bits [-128, 255]".formatted(integerLiteralToken.getValue()), integerLiteralToken.getSourcePosition());
+                }
+                yield Optional.of(new ByteLiteral(parserContext.here, integerLiteralToken.getValue()));
+            }
+            case FloatLiteralToken floatLiteralToken -> this.checkReservedName(parserContext, floatLiteralToken);
+            case StringLiteralToken stringLiteralToken -> this.checkReservedName(parserContext, stringLiteralToken);
         };
     }
 
@@ -149,19 +174,19 @@ public class Chip8Parser {
                 if (this.pollTokenOrThrow(AssignmentOperatorToken.class, parserContext, "Expected assignment operator ':=' after delay statement!", assignmentKeywordToken.getSourcePosition()).getAssignmentOperation() != AssignmentOperation.SET) {
                     throw new ParserException("Expected assignment operator ':=' after delay statement!", assignmentKeywordToken.getSourcePosition());
                 }
-                yield Optional.of(new SetDelayTimerAssignment(parserContext.currentOffset, this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected 'vx' argument after delay statement!", assignmentKeywordToken.getSourcePosition()).getRegisterIndex()));
+                yield Optional.of(new SetDelayTimerAssignment(parserContext.here, this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected 'vx' argument after delay statement!", assignmentKeywordToken.getSourcePosition()).getRegisterIndex()));
             }
             case BUZZER -> {
-                if (this.pollTokenOrThrow(AssignmentOperatorToken.class, parserContext, "Expected assignment operator ':=' after delay statement!", assignmentKeywordToken.getSourcePosition()).getAssignmentOperation() != AssignmentOperation.SET) {
-                    throw new ParserException("Expected assignment operator ':=' after delay statement!", assignmentKeywordToken.getSourcePosition());
+                if (this.pollTokenOrThrow(AssignmentOperatorToken.class, parserContext, "Expected assignment operator ':=' after buzzer statement!", assignmentKeywordToken.getSourcePosition()).getAssignmentOperation() != AssignmentOperation.SET) {
+                    throw new ParserException("Expected assignment operator ':=' after buzzer statement!", assignmentKeywordToken.getSourcePosition());
                 }
-                yield Optional.of(new SetBuzzerTimerAssignment(parserContext.currentOffset, this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected 'vx' argument after delay statement!", assignmentKeywordToken.getSourcePosition()).getRegisterIndex()));
+                yield Optional.of(new SetBuzzerTimerAssignment(parserContext.here, this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected 'vx' argument after delay statement!", assignmentKeywordToken.getSourcePosition()).getRegisterIndex()));
             }
             case PITCH -> {
-                if (this.pollTokenOrThrow(AssignmentOperatorToken.class, parserContext, "Expected assignment operator ':=' after delay statement!", assignmentKeywordToken.getSourcePosition()).getAssignmentOperation() != AssignmentOperation.SET) {
-                    throw new ParserException("Expected assignment operator ':=' after delay statement!", assignmentKeywordToken.getSourcePosition());
+                if (this.pollTokenOrThrow(AssignmentOperatorToken.class, parserContext, "Expected assignment operator ':=' after pitch statement!", assignmentKeywordToken.getSourcePosition()).getAssignmentOperation() != AssignmentOperation.SET) {
+                    throw new ParserException("Expected assignment operator ':=' after pitch statement!", assignmentKeywordToken.getSourcePosition());
                 }
-                yield Optional.of(new SetPitchAssignment(parserContext.currentOffset, this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected 'vx' argument after delay statement!", assignmentKeywordToken.getSourcePosition()).getRegisterIndex()));
+                yield Optional.of(new SetPitchAssignment(parserContext.here, this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected 'vx' argument after delay statement!", assignmentKeywordToken.getSourcePosition()).getRegisterIndex()));
             }
             default -> this.checkReservedName(parserContext, assignmentKeywordToken);
         });
@@ -169,132 +194,129 @@ public class Chip8Parser {
     
     private Optional<CodeElement> parseRegisterLiteral(ParserContext parserContext, RegisterLiteralToken registerLiteralToken) throws ParserException {
         return switch (this.pollTokenOrThrow(AssignmentOperatorToken.class, parserContext, "Unknown operator on register assignment statement!", registerLiteralToken.getSourcePosition()).getAssignmentOperation()) {
-            case BITWISE_OR -> Optional.of(new BitwiseOrRegisterAssignment(parserContext.currentOffset, registerLiteralToken.getRegisterIndex(), this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected vy argument after 'vx |=' assignment!", registerLiteralToken.getSourcePosition()).getRegisterIndex()));
-            case BITWISE_AND -> Optional.of(new BitwiseAndRegisterAssignment(parserContext.currentOffset, registerLiteralToken.getRegisterIndex(), this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected vy argument after 'vx &=' assignment!", registerLiteralToken.getSourcePosition()).getRegisterIndex()));
-            case BITWISE_XOR -> Optional.of(new BitwiseXorRegisterAssignment(parserContext.currentOffset, registerLiteralToken.getRegisterIndex(), this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected vy argument after 'vx ^=' assignment!", registerLiteralToken.getSourcePosition()).getRegisterIndex()));
-            case RIGHT_SHIFT -> Optional.of(new RightShiftRegisterAssignment(parserContext.currentOffset, registerLiteralToken.getRegisterIndex(), this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected vy argument after 'vx >>=' assignment!", registerLiteralToken.getSourcePosition()).getRegisterIndex()));
-            case LEFT_SHIFT -> Optional.of(new LeftShiftRegisterAssignment(parserContext.currentOffset, registerLiteralToken.getRegisterIndex(), this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected vy argument after 'vx <<=' assignment!", registerLiteralToken.getSourcePosition()).getRegisterIndex()));
-            case RIGHT_SUBTRACT -> Optional.of(new RightSubtractRegisterFromRegisterAssignment(parserContext.currentOffset, registerLiteralToken.getRegisterIndex(), this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected vy argument after 'vx =-' assignment!", registerLiteralToken.getSourcePosition()).getRegisterIndex()));
+            case BITWISE_OR -> Optional.of(new BitwiseOrRegisterAssignment(parserContext.here, registerLiteralToken.getRegisterIndex(), this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected vy argument after 'vx |=' assignment!", registerLiteralToken.getSourcePosition()).getRegisterIndex()));
+            case BITWISE_AND -> Optional.of(new BitwiseAndRegisterAssignment(parserContext.here, registerLiteralToken.getRegisterIndex(), this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected vy argument after 'vx &=' assignment!", registerLiteralToken.getSourcePosition()).getRegisterIndex()));
+            case BITWISE_XOR -> Optional.of(new BitwiseXorRegisterAssignment(parserContext.here, registerLiteralToken.getRegisterIndex(), this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected vy argument after 'vx ^=' assignment!", registerLiteralToken.getSourcePosition()).getRegisterIndex()));
+            case RIGHT_SHIFT -> Optional.of(new RightShiftRegisterAssignment(parserContext.here, registerLiteralToken.getRegisterIndex(), this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected vy argument after 'vx >>=' assignment!", registerLiteralToken.getSourcePosition()).getRegisterIndex()));
+            case LEFT_SHIFT -> Optional.of(new LeftShiftRegisterAssignment(parserContext.here, registerLiteralToken.getRegisterIndex(), this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected vy argument after 'vx <<=' assignment!", registerLiteralToken.getSourcePosition()).getRegisterIndex()));
+            case RIGHT_SUBTRACT -> Optional.of(new RightSubtractRegisterFromRegisterAssignment(parserContext.here, registerLiteralToken.getRegisterIndex(), this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected vy argument after 'vx =-' assignment!", registerLiteralToken.getSourcePosition()).getRegisterIndex()));
             case ADD -> switch (this.pollTokenOrThrow(parserContext, "Unterminated 'vx += ' statement!", registerLiteralToken.getSourcePosition())) {
-                case RegisterLiteralToken vy -> Optional.of(new AddRegisterToRegisterAssignment(parserContext.currentOffset, registerLiteralToken.getRegisterIndex(), vy.getRegisterIndex()));
+                case RegisterLiteralToken vy -> Optional.of(new AddRegisterToRegisterAssignment(parserContext.here, registerLiteralToken.getRegisterIndex(), vy.getRegisterIndex()));
                 case IntegerLiteralToken n -> {
                     if (n.is8Bits()) {
-                        yield Optional.of(new AddConstantToRegisterAssignment(parserContext.currentOffset, n.getValue()));
+                        yield Optional.of(new AddConstantToRegisterAssignment(parserContext.here, n.getValue()));
                     } else {
                         throw new ParserException("Argument '%d' for 'vx +=' does not fit in a byte!".formatted(n.getValue()), n.getSourcePosition());
                     }
                 }
-                default -> {}
+                case Token token -> throw new ParserException("Unexpected argument '%s' for 'vx +=' statement".formatted(token.getLexeme()), token.getSourcePosition());
             };
             case LEFT_SUBTRACT -> switch (this.pollTokenOrThrow(parserContext, "Unterminated 'vx -= ' statement!", registerLiteralToken.getSourcePosition())) {
-                case RegisterLiteralToken vy -> Optional.of(new LeftSubtractRegisterFromRegisterAssignment(parserContext.currentOffset, registerLiteralToken.getRegisterIndex(), vy.getRegisterIndex()));
+                case RegisterLiteralToken vy -> Optional.of(new LeftSubtractRegisterFromRegisterAssignment(parserContext.here, registerLiteralToken.getRegisterIndex(), vy.getRegisterIndex()));
                 case IntegerLiteralToken n -> {
                     if (n.is8Bits()) {
-                        yield Optional.of(new AddConstantToRegisterAssignment(parserContext.currentOffset, -n.getValue()));
+                        yield Optional.of(new AddConstantToRegisterAssignment(parserContext.here, -n.getValue()));
                     } else {
                         throw new ParserException("Argument '%d' for 'vx -=' does not fit in a byte!".formatted(n.getValue()), n.getSourcePosition());
                     }
                 }
-                default -> {}
+                case Token token -> throw new ParserException("Unexpected argument '%s' for 'vx -=' statement".formatted(token.getLexeme()), token.getSourcePosition());
             };
             case SET -> switch (this.pollTokenOrThrow(parserContext, "Unterminated 'vx := ' statement!", registerLiteralToken.getSourcePosition())) {
-                case RegisterLiteralToken vy -> Optional.of(new SetRegisterToRegisterAssignment(parserContext.currentOffset, registerLiteralToken.getRegisterIndex(), vy.getRegisterIndex()));
+                case RegisterLiteralToken vy -> Optional.of(new SetRegisterToRegisterAssignment(parserContext.here, registerLiteralToken.getRegisterIndex(), vy.getRegisterIndex()));
                 case IntegerLiteralToken n -> {
                     if (n.is8Bits()) {
-                        yield Optional.of(new SetRegisterToConstantAssignment(parserContext.currentOffset, n.getValue()));
+                        yield Optional.of(new SetRegisterToConstantAssignment(parserContext.here, n.getValue()));
                     } else {
                         throw new ParserException("Argument '%d' for 'vx :=' does not fit in a byte!".formatted(n.getValue()), n.getSourcePosition());
                     }
                 }
                 case AssignmentKeywordToken assignmentKeywordToken -> switch (assignmentKeywordToken.getAssignmentKeyword()) {
-                    case DELAY -> Optional.of(new SetRegisterToDelayTimerAssignment(parserContext.currentOffset));
-                    case KEY -> Optional.of(new SetRegisterToKeyAssignment(parserContext.currentOffset));
+                    case DELAY -> Optional.of(new SetRegisterToDelayTimerAssignment(parserContext.here));
+                    case KEY -> Optional.of(new SetRegisterToKeyAssignment(parserContext.here));
                     case RANDOM -> {
                         IntegerLiteralToken nn = this.pollTokenOrThrow(IntegerLiteralToken.class, parserContext, "Expected literal argument after 'vx := random' assignment!", registerLiteralToken.getSourcePosition());
                         if (nn.is8Bits()) {
-                            yield Optional.of(new SetRegisterToRandomAssignment(parserContext.currentOffset, nn.getValue()));
+                            yield Optional.of(new SetRegisterToRandomAssignment(parserContext.here, nn.getValue()));
                         } else {
                             throw new ParserException("Argument '%d' for 'vx := random' does not fit in a byte!".formatted(nn.getValue()), nn.getSourcePosition());
                         }
                     }
-                    default -> {}
+                    default -> this.checkReservedName(parserContext, assignmentKeywordToken);
                 };
-                default -> {}
+                case Token token -> throw new ParserException("Unexpected argument '%s' for 'vx :=' statement".formatted(token.getLexeme()), token.getSourcePosition());
             };
         };
     }
 
     private Optional<CodeElement> parseIndexRegister(ParserContext parserContext, IndexRegisterToken indexRegisterToken) throws ParserException {
         return switch (this.pollTokenOrThrow(AssignmentOperatorToken.class, parserContext, "Expected assignment operators ':=' or '+=' after an 'i' assignment!", indexRegisterToken.getSourcePosition()).getAssignmentOperation()) {
-            case ADD -> Optional.of(new IncrementIndexRegisterAssignment(parserContext.currentOffset, this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected 'vx' argument after 'i' increment statement!", indexRegisterToken.getSourcePosition()).getRegisterIndex()));
+            case ADD -> Optional.of(new IncrementIndexRegisterAssignment(parserContext.here, this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected 'vx' argument after 'i' increment statement!", indexRegisterToken.getSourcePosition()).getRegisterIndex()));
             case SET -> switch (this.pollTokenOrThrow(parserContext, "Expected assignment operators ':=' or '+=' after an 'i' assignment!", indexRegisterToken.getSourcePosition())) {
                 case IntegerLiteralToken n -> {
                     if (!n.isUnsigned12Bits()) {
                         throw new ParserException("Argument '%d' for 'i' assignment does not fit in 12 bits!".formatted(n.getValue()), indexRegisterToken.getSourcePosition());
                     }
-                    yield Optional.of(new SetIndexRegisterToConstantAssignment(parserContext.currentOffset, new AddressArgument.Value(n.getValue())));
+                    yield Optional.of(new SetIndexRegisterToConstantAssignment(parserContext.here, new AddressArgument.Value(n.getValue())));
                 }
                 case AssignmentKeywordToken assignmentKeywordToken -> switch (assignmentKeywordToken.getAssignmentKeyword()) {
-                    case HEX -> Optional.of(new SetIndexRegisterToHexCharAssignment(parserContext.currentOffset, this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected 'vx' argument after 'i := hex' increment statement!", indexRegisterToken.getSourcePosition()).getRegisterIndex()));
-                    case BIGHEX -> Optional.of(new SetIndexRegisterToBigHexCharAssignment(parserContext.currentOffset, this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected 'vx' argument after 'i := bighex' increment statement!", indexRegisterToken.getSourcePosition()).getRegisterIndex())));
+                    case HEX -> Optional.of(new SetIndexRegisterToHexCharAssignment(parserContext.here, this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected 'vx' argument after 'i := hex' increment statement!", indexRegisterToken.getSourcePosition()).getRegisterIndex()));
+                    case BIGHEX -> Optional.of(new SetIndexRegisterToBigHexCharAssignment(parserContext.here, this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected 'vx' argument after 'i := bighex' increment statement!", indexRegisterToken.getSourcePosition()).getRegisterIndex()));
                     case LONG -> {
                         Token longAssignmentArgumentToken = this.pollTokenOrThrow(parserContext, "Expected 12 bit integer or label argument for 'i := long' statement!", indexRegisterToken.getSourcePosition());
                         if (longAssignmentArgumentToken instanceof IntegerLiteralToken nnnn) {
                             if (!nnnn.isUnsigned16Bits()) {
                                 throw new ParserException("Argument '%d' for 'i := long' assignment does not fit in 16 bits!".formatted(nnnn.getValue()), nnnn.getSourcePosition());
                             }
-                            yield new SetIndexRegisterToLongConstantAssignment(parserContext.currentOffset, new AddressArgument.Value(nnnn.getValue()));
+                            yield Optional.of(new SetIndexRegisterToLongConstantAssignment(parserContext.here, new AddressArgument.Value(nnnn.getValue())));
                         } else {
                             this.checkReservedName(parserContext, longAssignmentArgumentToken);
-                            yield new SetIndexRegisterToLongConstantAssignment(parserContext.currentOffset, new AddressArgument.LabelReference(indexRegisterToken.getLexeme()));
+                            yield Optional.of(new SetIndexRegisterToLongConstantAssignment(parserContext.here, new AddressArgument.LabelReference(longAssignmentArgumentToken.getLexeme())));
                         }
                     }
                     default -> throw new ParserException("Unexpected name '%s' after 'i' assignment statement!".formatted(indexRegisterToken.getLexeme()), indexRegisterToken.getSourcePosition());
                 };
-                default -> {
-                    Token labelToken = this.pollTokenOrThrow(parserContext, "Expected label argument after 'i := ' statement!", indexRegisterToken.getSourcePosition());
+                case Token labelToken -> {
                     this.checkReservedName(parserContext, labelToken);
-                    yield new SetIndexRegisterToConstantAssignment(parserContext.currentOffset, new AddressArgument.LabelReference(labelToken.getLexeme()));
+                    yield Optional.of(new SetIndexRegisterToConstantAssignment(parserContext.here, new AddressArgument.LabelReference(labelToken.getLexeme())));
                 }
-                default -> throw new ParserException("Unexpected value '%s' after 'i' assignment statement".formatted(indexRegisterToken.getLexeme()), indexRegisterToken.getSourcePosition());
             };
             default -> throw new ParserException("Unexpected operator '%s' after an 'i' assignment!".formatted(indexRegisterToken.getLexeme()), indexRegisterToken.getSourcePosition());
         };
     }
 
-    private Optional<CodeElement> parseDirective(ParserContext parserContext, DirectiveToken directiveToken) {
-        switch (directiveToken.getDirective()) {
-            case ORG -> {}
-            case BYTE -> {}
-            case CALC -> {}
-            case CALL -> {}
-            case NEXT -> {}
-            case ALIAS -> {}
-            case CONST -> {}
-            case MACRO -> {}
-            case PROTO -> {}
-            case ASSERT -> {}
-            case UNPACK -> {}
-            case MONITOR -> {}
-            case POINTER -> {}
-            case BREAKPOINT -> {}
-            case STRING_MODE -> {}
-            case LABEL_DEFINITION -> {}
-        }
+    private Optional<CodeElement> parseDirective(ParserContext parserContext, DirectiveToken directiveToken) throws ParserException {
+        return switch (directiveToken.getDirective()) {
+            case LABEL_DEFINITION -> {
+                Token token = this.pollTokenOrThrow(parserContext, "Expected label name following ':' directive!", directiveToken.getSourcePosition());
+                parserContext.addDirectiveDefinition(token, new LabelDefinition(token.getLexeme(), parserContext.here));
+                yield Optional.empty();
+            }
+            case ORG -> Optional.empty();
+            case BYTE -> Optional.empty();
+            case CALC -> Optional.empty();
+            case CALL -> Optional.empty();
+            case NEXT -> Optional.empty();
+            case ALIAS -> Optional.empty();
+            case CONST -> Optional.empty();
+            case MACRO -> Optional.empty();
+            case PROTO -> Optional.empty();
+            case ASSERT -> Optional.empty();
+            case UNPACK -> Optional.empty();
+            case MONITOR -> Optional.empty();
+            case POINTER -> Optional.empty();
+            case BREAKPOINT -> Optional.empty();
+            case STRING_MODE -> Optional.empty();
+        };
     }
 
     private Optional<Token> pollToken(ParserContext parserContext) {
         return parserContext.tokenStream.poll()
-                .map(token -> parserContext.getDirective(token)
-                        .map(directiveDefinition -> directiveDefinition.expand(parserContext.currentOffset))
-                        .map(directiveTokens -> {
-                            // If the directive expanded to a collection of tokens, return the first one, and push the rest of the tokens back to the front of the token stream
-                            // We iterate through the tokens in reverse until the second token, so that the last directive tokens, which are added first, end up further back in the token stream
-                            for (int i = directiveTokens.size() - 1; i >= 1; i--) {
-                                parserContext.tokenStream.offerFront(directiveTokens.get(i));
-                            }
-                            return directiveTokens.getFirst();
-        }).orElse(token));
+                .flatMap(token -> parserContext.getDirective(token)
+                        .map(directiveDefinition -> {
+                            this.expandDirective(parserContext, directiveDefinition);
+                            return this.pollToken(parserContext);
+                        }).orElse(Optional.of(token)));
     }
 
     private Token pollTokenOrThrow(ParserContext parserContext, String error, SourcePosition sourcePosition) throws ParserException {
@@ -313,15 +335,18 @@ public class Chip8Parser {
 
     private Optional<Token> peekToken(ParserContext parserContext) {
         return parserContext.tokenStream.peek()
-                .map(token -> parserContext.getDirective(token)
-                        .map(directiveDefinition -> directiveDefinition.expand(parserContext.currentOffset))
-                        .map(directiveTokens -> {
-                            // Do the same thing we do on pollToken() but push back all expanded tokens since we are just peeking, so we want the first token to remain available
-                            for (int i = directiveTokens.size() - 1; i >= 0; i--) {
-                                parserContext.tokenStream.offerFront(directiveTokens.get(i));
-                            }
-                            return directiveTokens.getFirst();
-        }).orElse(token));
+                .flatMap(token -> parserContext.getDirective(token)
+                        .map(directiveDefinition -> {
+                            this.expandDirective(parserContext, directiveDefinition);
+                            return this.peekToken(parserContext);
+                }).orElse(Optional.of(token)));
+    }
+
+    private void expandDirective(ParserContext parserContext, DirectiveDefinition directiveDefinition) {
+        List<Token> directiveTokens = directiveDefinition.expand(parserContext.here);
+        for (int i = directiveTokens.size() - 1; i >= 0; i--) {
+            parserContext.tokenStream.offerFront(directiveTokens.get(i));
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -346,16 +371,16 @@ public class Chip8Parser {
         if (token instanceof ReservedNameToken) {
             throw new ParserException("The name '%s' is reserved and cannot be used as a label!".formatted(token.getLexeme()), token.getSourcePosition());
         } else {
-            return Optional.of(new CallStatement(parserContext.currentOffset, new AddressArgument.LabelReference(token.getLexeme())));
+            return Optional.of(new CallStatement(parserContext.here, new AddressArgument.LabelReference(token.getLexeme())));
         }
     }
 
-    private static class ParserContext {
+    private class ParserContext {
 
         private final SourceStream<Token> tokenStream;
         private final List<CodeElement> codeElements = new ArrayList<>();
         private final Map<String, DirectiveDefinition> directiveDefinitions = new HashMap<>();
-        private int currentOffset = 0x200;
+        private int here = 0x200;
 
         private ParserContext(SourceStream<Token> tokenStream) {
             this.tokenStream = tokenStream;
@@ -373,6 +398,23 @@ public class Chip8Parser {
                 }
             }
             return Map.copyOf(labelDefinitions);
+        }
+
+        private void addDirectiveDefinition(Token token, DirectiveDefinition directiveDefinition) throws ParserException {
+            String name = token.getLexeme();
+            if (this.directiveDefinitions.containsKey(name)) {
+                throw new ParserException("Directive name '%s' is already defined!".formatted(name), token.getSourcePosition());
+            }
+            checkReservedName(this, token);
+            this.directiveDefinitions.put(name, directiveDefinition);
+        }
+
+        private void incrementHere(Token token, CodeElement codeElement) throws ParserException {
+            int newHere = this.here + codeElement.getSizeInBytes();
+            if (newHere > 0xFFFF) {
+                throw new ParserException("ROM size exceeds the 16-bit integer limit!", token.getSourcePosition());
+            }
+            this.here = newHere;
         }
 
     }

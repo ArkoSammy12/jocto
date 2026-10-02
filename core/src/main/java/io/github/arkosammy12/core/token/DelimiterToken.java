@@ -35,7 +35,7 @@ public final class DelimiterToken extends IdentifierToken {
 
     @Override
     public String toString() {
-        return "DelimiterToken[%s, delimiter=%s, type=%s]".formatted(this.getLexemeAndPositionString(), this.delimiter.name(), this.delimiterType.name());
+        return "DelimiterToken[%s, delimiter=%s, type=%s]".formatted(this.getBaseStringContents(), this.delimiter.name(), this.delimiterType.name());
     }
 
     public static Optional<DelimiterToken> tryParse(String lexeme, SourcePosition sourcePosition) {

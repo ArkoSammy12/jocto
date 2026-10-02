@@ -20,7 +20,7 @@ public final class StringModeArgumentToken extends IdentifierToken {
 
     @Override
     public String toString() {
-        return "StringModeArgumentIdentifierToken[%s, stringModeArgument=%s]".formatted(this.getLexemeAndPositionString(), this.stringModeArgument.name());
+        return "StringModeArgumentIdentifierToken[%s, stringModeArgument=%s]".formatted(this.getBaseStringContents(), this.stringModeArgument.name());
     }
 
     public static Optional<StringModeArgumentToken> tryParse(String lexeme, SourcePosition sourcePosition) {

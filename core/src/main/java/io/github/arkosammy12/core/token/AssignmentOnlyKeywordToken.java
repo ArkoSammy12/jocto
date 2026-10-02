@@ -22,7 +22,7 @@ public final class AssignmentOnlyKeywordToken extends ReservedNameToken implemen
 
     @Override
     public String toString() {
-        return "AssignmentKeywordToken[%s, keyword=%s]".formatted(this.getLexemeAndPositionString(), this.assignmentKeywordLexeme.name());
+        return "AssignmentKeywordToken[%s, keyword=%s]".formatted(this.getBaseStringContents(), this.assignmentKeywordLexeme.name());
     }
 
     public static Optional<AssignmentOnlyKeywordToken> tryParse(String lexeme, SourcePosition sourcePosition) {

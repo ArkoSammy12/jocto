@@ -18,7 +18,7 @@ public final class NotKeyToken extends ReservedNameToken implements ConditionalO
 
     @Override
     public String toString() {
-        return "NotKeyToken[%s]".formatted(this.getLexemeAndPositionString());
+        return "NotKeyToken[%s]".formatted(this.getBaseStringContents());
     }
 
     public static Optional<NotKeyToken> tryPase(String lexeme, SourcePosition sourcePosition) {

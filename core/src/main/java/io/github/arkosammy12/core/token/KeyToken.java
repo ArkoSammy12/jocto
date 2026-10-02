@@ -24,7 +24,7 @@ public final class KeyToken extends ReservedNameToken implements AssignmentKeywo
 
     @Override
     public String toString() {
-        return "KeyToken[%s]".formatted(this.getLexemeAndPositionString());
+        return "KeyToken[%s]".formatted(this.getBaseStringContents());
     }
 
     public static Optional<KeyToken> tryPase(String lexeme, SourcePosition sourcePosition) {

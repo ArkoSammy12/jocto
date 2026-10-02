@@ -45,10 +45,10 @@ public abstract sealed class AbstractToken implements Token permits LiteralToken
 
     @Override
     public String toString() {
-        return "Token[%s]".formatted(this.getLexemeAndPositionString());
+        return "Token[%s]".formatted(this.getBaseStringContents());
     }
 
-    protected String getLexemeAndPositionString() {
+    protected String getBaseStringContents() {
         return "lexeme='%s', position=%s".formatted(this.lexeme, this.sourcePosition);
     }
 

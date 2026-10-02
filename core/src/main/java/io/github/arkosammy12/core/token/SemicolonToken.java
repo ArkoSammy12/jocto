@@ -18,7 +18,7 @@ public final class SemicolonToken extends ReservedNameToken implements Instructi
 
     @Override
     public String toString() {
-        return "SemicolonToken[%s]".formatted(this.getLexemeAndPositionString());
+        return "SemicolonToken[%s]".formatted(this.getBaseStringContents());
     }
 
     public static Optional<SemicolonToken> tryParse(String lexeme, SourcePosition sourcePosition) {

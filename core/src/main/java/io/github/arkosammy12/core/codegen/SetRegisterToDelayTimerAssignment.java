@@ -7,7 +7,7 @@ public final class SetRegisterToDelayTimerAssignment extends Assignment {
     }
 
     @Override
-    int getSizeInBytes() {
+    public int getSizeInBytes() {
         return 2;
     }
 

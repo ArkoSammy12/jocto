@@ -24,7 +24,7 @@ public final class StringLiteralToken extends LiteralToken {
 
     @Override
     public String toString() {
-        return "StringLiteralToken[%s, resolved=%s]".formatted(this.getLexemeAndPositionString(), this.resolved);
+        return "StringLiteralToken[%s, resolved=%s]".formatted(this.getBaseStringContents(), this.resolved);
     }
 
     public static Optional<StringLiteralToken> tryParse(String lexeme, SourcePosition sourcePosition) {

@@ -12,7 +12,7 @@ public final class JumpZeroStatement extends Statement {
     }
 
     @Override
-    int getSizeInBytes() {
+    public int getSizeInBytes() {
         return 2;
     }
 

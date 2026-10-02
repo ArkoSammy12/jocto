@@ -28,7 +28,7 @@ public final class ComparisonOperatorToken extends ReservedNameToken implements 
 
     @Override
     public String toString() {
-        return "ComparisonOperatorToken[%s, operator=%s]".formatted(this.getLexemeAndPositionString(), this.comparisonOperatorLexeme.name());
+        return "ComparisonOperatorToken[%s, operator=%s]".formatted(this.getBaseStringContents(), this.comparisonOperatorLexeme.name());
     }
 
     public static Optional<ComparisonOperatorToken> tryPase(String lexeme, SourcePosition sourcePosition) {

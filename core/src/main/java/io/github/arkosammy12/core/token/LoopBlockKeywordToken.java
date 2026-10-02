@@ -20,7 +20,7 @@ public final class LoopBlockKeywordToken extends ReservedNameToken {
 
     @Override
     public String toString() {
-        return "LoopBlockKeywordToken[%s, keyword=%s]".formatted(this.getLexemeAndPositionString(), this.loopBlockKeywordLexeme.name());
+        return "LoopBlockKeywordToken[%s, keyword=%s]".formatted(this.getBaseStringContents(), this.loopBlockKeywordLexeme.name());
     }
 
     public static Optional<LoopBlockKeywordToken> tryParse(String lexeme, SourcePosition sourcePosition) {

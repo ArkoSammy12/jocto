@@ -10,7 +10,7 @@ public final class SetRegisterToConstantAssignment extends Assignment {
     }
 
     @Override
-    int getSizeInBytes() {
+    public int getSizeInBytes() {
         return 2;
     }
 

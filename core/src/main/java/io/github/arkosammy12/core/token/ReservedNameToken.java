@@ -4,7 +4,7 @@ import io.github.arkosammy12.core.lexer.SourcePosition;
 
 import java.util.Optional;
 
-public abstract sealed class ReservedNameToken extends NameToken permits AssignmentOnlyKeywordToken, AssignmentOperatorToken, ComparisonOperatorToken, ConditionalBlockKeywordToken, DirectiveToken, IndexRegisterToken, KeyToken, LoopBlockKeywordToken, NonSymbolInstructionStatementKeywordToken, NotKeyToken, SemicolonToken {
+public abstract sealed class ReservedNameToken extends NameToken permits AssignmentOnlyKeywordToken, AssignmentOperatorToken, ComparisonOperatorToken, IfBlockKeywordToken, DirectiveToken, IndexRegisterToken, KeyToken, LoopBlockKeywordToken, NonSymbolInstructionStatementKeywordToken, NotKeyToken, SemicolonToken {
 
     public ReservedNameToken(String lexeme, SourcePosition sourcePosition) {
         super(lexeme, sourcePosition);
@@ -19,7 +19,7 @@ public abstract sealed class ReservedNameToken extends NameToken permits Assignm
         if (assignmentOperatorToken.isPresent()) {
             return assignmentOperatorToken;
         }
-        Optional<ConditionalBlockKeywordToken> conditionalBlockKeywordToken = ConditionalBlockKeywordToken.tryParse(lexeme, sourcePosition);
+        Optional<IfBlockKeywordToken> conditionalBlockKeywordToken = IfBlockKeywordToken.tryParse(lexeme, sourcePosition);
         if (conditionalBlockKeywordToken.isPresent()) {
             return conditionalBlockKeywordToken;
         }

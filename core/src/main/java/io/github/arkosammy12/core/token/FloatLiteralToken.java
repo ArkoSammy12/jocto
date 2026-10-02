@@ -19,7 +19,7 @@ public final class FloatLiteralToken extends LiteralToken {
 
     @Override
     public String toString() {
-        return "FloatLiteralToken[%s, value=%f]".formatted(this.getLexemeAndPositionString(), this.value);
+        return "FloatLiteralToken[%s, value=%f]".formatted(this.getBaseStringContents(), this.value);
     }
 
     public static Optional<FloatLiteralToken> tryParse(String lexeme, SourcePosition sourcePosition) {

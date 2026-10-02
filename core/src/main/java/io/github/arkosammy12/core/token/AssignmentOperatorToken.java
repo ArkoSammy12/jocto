@@ -21,7 +21,7 @@ public final class AssignmentOperatorToken extends ReservedNameToken {
 
     @Override
     public String toString() {
-        return "AssignmentOperatorToken[%s, operator=%s]".formatted(this.getLexemeAndPositionString(), this.assignmentOperatorLexeme.name());
+        return "AssignmentOperatorToken[%s, operator=%s]".formatted(this.getBaseStringContents(), this.assignmentOperatorLexeme.name());
     }
 
     public static Optional<AssignmentOperatorToken> tryParse(String lexeme, SourcePosition sourcePosition) {

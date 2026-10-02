@@ -10,7 +10,7 @@ public final class SetDelayTimerAssignment extends Assignment {
     }
 
     @Override
-    int getSizeInBytes() {
+    public int getSizeInBytes() {
         return 2;
     }
 

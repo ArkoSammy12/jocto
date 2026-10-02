@@ -1,6 +1,6 @@
 package io.github.arkosammy12.core.codegen;
 
-public abstract sealed class CodeElement permits Instruction, InstructionBlock {
+public abstract sealed class CodeElement permits ByteLiteral, Instruction, InstructionBlock, PointerLiteral {
 
     private final int offset;
 
@@ -12,6 +12,15 @@ public abstract sealed class CodeElement permits Instruction, InstructionBlock {
         return this.offset;
     }
 
-    abstract int getSizeInBytes();
+    public abstract int getSizeInBytes();
+
+    protected String getStringBaseContents() {
+        return "offset=%04X, sizeInBytes=%d".formatted(this.offset, this.getSizeInBytes());
+    }
+
+    @Override
+    public String toString() {
+        return "CodeElement[%s]".formatted(this.getStringBaseContents());
+    }
 
 }

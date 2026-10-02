@@ -20,7 +20,7 @@ public final class CalcConstantToken extends IdentifierToken {
 
     @Override
     public String toString() {
-        return "CalcConstantIdentifierToken[%s, constant=%s]".formatted(this.getLexemeAndPositionString(), this.calcConstantLexeme.name());
+        return "CalcConstantIdentifierToken[%s, constant=%s]".formatted(this.getBaseStringContents(), this.calcConstantLexeme.name());
     }
 
     public static Optional<CalcConstantToken> tryParser(String lexeme, SourcePosition sourcePosition) {

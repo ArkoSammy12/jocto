@@ -10,7 +10,7 @@ public final class SetIndexRegisterToBigHexCharAssignment extends Assignment {
     }
 
     @Override
-    int getSizeInBytes() {
+    public int getSizeInBytes() {
         return 2;
     }
 

@@ -7,7 +7,7 @@ public final class ScrollRightStatement extends Statement {
     }
 
     @Override
-    int getSizeInBytes() {
+    public int getSizeInBytes() {
         return 2;
     }
 

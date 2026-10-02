@@ -35,7 +35,7 @@ public final class IntegerLiteralToken extends LiteralToken {
 
     @Override
     public String toString() {
-        return "IntegerLiteralToken[%s, value=%d]".formatted(this.getLexemeAndPositionString(), this.value);
+        return "IntegerLiteralToken[%s, value=%d]".formatted(this.getBaseStringContents(), this.value);
     }
 
     public static Optional<IntegerLiteralToken> tryParse(String lexeme, SourcePosition sourcePosition) {

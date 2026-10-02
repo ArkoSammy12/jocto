@@ -10,7 +10,7 @@ public final class SetBuzzerTimerAssignment extends Assignment {
     }
 
     @Override
-    int getSizeInBytes() {
+    public int getSizeInBytes() {
         return 2;
     }
 

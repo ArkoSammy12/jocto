@@ -25,4 +25,9 @@ public final class MacroDefinition extends DirectiveDefinition {
         return this.tokens;
     }
 
+    @Override
+    public List<Token> expand(int currentOffset) {
+        return List.of();
+    }
+
 }
