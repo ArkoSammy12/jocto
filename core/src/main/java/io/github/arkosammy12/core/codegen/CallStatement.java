@@ -4,7 +4,7 @@ import io.github.arkosammy12.core.parser.AddressArgument;
 
 public final class CallStatement extends Statement implements LabelableInstruction {
 
-    private final AddressArgument addressArgument;
+    private AddressArgument addressArgument;
 
     public CallStatement(int offset, AddressArgument addressArgument) {
         super(offset);
@@ -17,8 +17,10 @@ public final class CallStatement extends Statement implements LabelableInstructi
     }
 
     @Override
-    public LabelableInstruction resolve(int address) {
-        return new CallStatement(this.offset, new AddressArgument.Value(address));
+    public void resolve(int address) {
+        if (!(addressArgument instanceof AddressArgument.Resolved)) {
+            this.addressArgument = new AddressArgument.Resolved(address);
+        }
     }
 
 }

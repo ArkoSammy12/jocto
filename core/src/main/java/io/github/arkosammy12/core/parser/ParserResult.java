@@ -9,7 +9,7 @@ import java.util.Map;
 
 public sealed interface ParserResult {
 
-    record Ok(Collection<CodeElement> codeElements, Map<String, LabelDefinition> labelDefinitions) implements ParserResult {}
+    record Ok(Collection<CodeElement> codeElements, Map<String, LabelDefinition> labelDefinitions, Map<Integer, Integer> addressedLabelDefinitions) implements ParserResult {}
 
     record Error(String error, SourcePosition sourcePosition) implements ParserResult {}
 

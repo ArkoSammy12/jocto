@@ -9,7 +9,7 @@ public abstract sealed class CodePrimitive extends CodeElement permits Instructi
     public abstract int getSizeInBytes();
 
     protected String getStringBaseContents() {
-        return "offset=%04X, sizeInBytes=%d".formatted(this.offset, this.getSizeInBytes());
+        return "offset=%d, sizeInBytes=%d".formatted(this.offset, this.getSizeInBytes());
     }
 
     @Override

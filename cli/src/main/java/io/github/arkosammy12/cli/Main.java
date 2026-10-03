@@ -15,11 +15,23 @@ public class Main {
 
     static void main(String[] args) {
         String test = """
-                if v1 == 0x00 begin
+                : main
+                loop
                     v1 := v2
-                else
                     v3 := v4
-                end
+                    while v1 == 0x00
+                    v4 := v5
+                    v6 := v7
+                    
+                    if v1 == 0x00 then i := 0x123
+                    
+                    if vf == 0x66 begin
+                        v9 := va
+                        while v9 == 0x99
+                    else 
+                        vb := vc
+                    end
+                again
                 """;
 
         SourceFile sourceFile = new SourceFile(List.of(test.split("\n")));
@@ -31,8 +43,8 @@ public class Main {
                 OctoParser octoParser = new OctoParser();
                 ParserResult parserResult = octoParser.parseTokens(tokenStream);
                 switch (parserResult) {
-                    case ParserResult.Ok(Collection<CodeElement> codeElements, Map<String, LabelDefinition> labelDefinitions) -> {
-                        for (CodeElement codeElement :codeElements) {
+                    case ParserResult.Ok(Collection<CodeElement> codeElements, Map<String, LabelDefinition> labelDefinitions, Map<Integer, Integer> addressedLabelDefinitions) -> {
+                        for (CodeElement codeElement : codeElements) {
                             IO.println(codeElement);
                         }
                     }

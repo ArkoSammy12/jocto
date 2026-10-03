@@ -5,10 +5,10 @@ import java.util.List;
 
 public final class IfBeginEndBlock extends IfBlock {
 
-    private final Collection<CodeElement> ifBlockStatements;
     private final JumpStatement jumpAboveIfBlockStatement;
+    private final Collection<CodeElement> ifBlockStatements;
 
-    public IfBeginEndBlock(int offset, Collection<CodePrimitive> conditionalExpressionOpcodes, Collection<CodeElement> ifBlockStatements, JumpStatement jumpAboveIfBlockStatement) {
+    public IfBeginEndBlock(int offset, Collection<CodePrimitive> conditionalExpressionOpcodes, JumpStatement jumpAboveIfBlockStatement, Collection<CodeElement> ifBlockStatements) {
         super(offset, conditionalExpressionOpcodes);
         this.ifBlockStatements = List.copyOf(ifBlockStatements);
         this.jumpAboveIfBlockStatement = jumpAboveIfBlockStatement;

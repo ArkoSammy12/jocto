@@ -4,6 +4,7 @@ package io.github.arkosammy12.core.lexer;
 import io.github.arkosammy12.core.token.Token;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,100 +25,125 @@ public class OctoLexer {
             SourceCharacter newSourceCharacter = optionalSourceCharacter.get();
 
             // Finish the pending token once we have moved on to the next row, if we have one
-            if (newSourceCharacter.sourcePosition().row() > tokenizerContext.currentRow) {
+            if (newSourceCharacter.sourcePosition().row() > tokenizerContext.getCurrentRow()) {
                 // Only finish a pending token if it is a regular token. If it is a string token, then we can continue building it on the following row
-                if (tokenizerContext.state == TokenizerState.TOKEN) {
-                    this.finishToken(tokenizerContext);
+                if (tokenizerContext.getState() == TokenizerState.TOKEN) {
+                    tokenizerContext.finishToken();
                 }
-                tokenizerContext.currentRow = newSourceCharacter.sourcePosition().row();
+                tokenizerContext.setCurrentRow(newSourceCharacter.sourcePosition().row());
             }
 
             char newCharacter = newSourceCharacter.character();
             switch (newCharacter) {
                 case '#' -> {
                     // If we are building a string token, append the '#'. Otherwise, discard the rest of the row
-                    if (tokenizerContext.state == TokenizerState.STRING_TOKEN) {
-                        this.appendCharacter(tokenizerContext, newSourceCharacter);
+                    if (tokenizerContext.getState() == TokenizerState.STRING_TOKEN) {
+                        tokenizerContext.appendCharacter(newSourceCharacter);
                     } else {
-                        characterStream.pollUntil(sc -> sc.sourcePosition().row() > tokenizerContext.currentRow);
+                        characterStream.pollUntil(sc -> sc.sourcePosition().row() > tokenizerContext.getCurrentRow());
                     }
                 }
                 case '\"' -> {
-                    switch (tokenizerContext.state) {
-                        case WHITESPACE -> this.beginToken(tokenizerContext, newSourceCharacter); // If going from whitespace to a '"', begin a new string token
+                    switch (tokenizerContext.getState()) {
+                        case WHITESPACE -> tokenizerContext.beginToken(newSourceCharacter); // If going from whitespace to a '"', begin a new string token
                         case TOKEN -> {
                             // If going from a regular token to a quote, finish the previous token, and begin a new string quote
-                            this.finishToken(tokenizerContext);
-                            this.beginToken(tokenizerContext, newSourceCharacter);
+                            tokenizerContext.finishToken();
+                            tokenizerContext.beginToken(newSourceCharacter);
                         }
                         case STRING_TOKEN -> {
                             // Add this quote, and if it is not escaped, finish the current string token
                             int backslashRun = 0;
-                            for (int i = tokenizerContext.tokenBuilder.length() - 1; i >= 0 && tokenizerContext.tokenBuilder.charAt(i) == '\\'; i--) {
+                            for (int i = tokenizerContext.getTokenBuilder().length() - 1; i >= 0 && tokenizerContext.getTokenBuilder().charAt(i) == '\\'; i--) {
                                 backslashRun++;
                             }
                             // We should have an uneven amount of preceding contiguous backslashes to guarantee that the first one we encountered corresponds to escaping the current '"'
                             boolean escaped = backslashRun % 2 == 1;
-                            this.appendCharacter(tokenizerContext, newSourceCharacter);
+                            tokenizerContext.appendCharacter(newSourceCharacter);
                             if (!escaped) {
-                                this.finishToken(tokenizerContext);
+                                tokenizerContext.finishToken();
                             }
                         }
                     }
                 }
                 default -> {
                     if (Character.isWhitespace(newCharacter)) {
-                        switch (tokenizerContext.state) {
+                        switch (tokenizerContext.getState()) {
                             case WHITESPACE -> {} // Do nothing if going from whitespace to whitespace :v
-                            case TOKEN -> this.finishToken(tokenizerContext); // Finish the current token if going from token to whitespace
-                            case STRING_TOKEN -> this.appendCharacter(tokenizerContext, newSourceCharacter); // Append the whitespace to the current string token
+                            case TOKEN -> tokenizerContext.finishToken(); // Finish the current token if going from token to whitespace
+                            case STRING_TOKEN -> tokenizerContext.appendCharacter(newSourceCharacter); // Append the whitespace to the current string token
                         }
                     } else {
-                        switch (tokenizerContext.state) {
-                            case WHITESPACE -> this.beginToken(tokenizerContext, newSourceCharacter); // Begin a new token if going from whitespace to non-whitespace
-                            case TOKEN, STRING_TOKEN -> this.appendCharacter(tokenizerContext, newSourceCharacter); // Append the current non-whitespace character to the current token
+                        switch (tokenizerContext.getState()) {
+                            case WHITESPACE -> tokenizerContext.beginToken(newSourceCharacter); // Begin a new token if going from whitespace to non-whitespace
+                            case TOKEN, STRING_TOKEN -> tokenizerContext.appendCharacter(newSourceCharacter); // Append the current non-whitespace character to the current token
                         }
                     }
                 }
             }
         }
 
-        return switch (tokenizerContext.state) {
-            case STRING_TOKEN -> new LexerResult.Error("Unclosed string literal!", tokenizerContext.tokenPosition);
+        return switch (tokenizerContext.getState()) {
+            case STRING_TOKEN -> new LexerResult.Error("Unclosed string literal!", tokenizerContext.getTokenPosition());
             case TOKEN, WHITESPACE -> {
-                this.finishToken(tokenizerContext);
-                yield new LexerResult.Ok(new SourceStream<>(tokenizerContext.tokens));
+                tokenizerContext.finishToken();
+                yield new LexerResult.Ok(new SourceStream<>(tokenizerContext.getTokens()));
             }
         };
     }
 
-    private void appendCharacter(TokenizerContext tokenizerContext, SourceCharacter sourceCharacter) {
-        tokenizerContext.tokenBuilder.append(sourceCharacter.character());
-    }
-
-    private void beginToken(TokenizerContext tokenizerContext, SourceCharacter sourceCharacter) {
-        tokenizerContext.tokenBuilder.setLength(0);
-        this.appendCharacter(tokenizerContext, sourceCharacter);
-        tokenizerContext.state = sourceCharacter.character() == '\"' ? TokenizerState.STRING_TOKEN : TokenizerState.TOKEN;
-        tokenizerContext.tokenPosition = sourceCharacter.sourcePosition();
-    }
-
-    private void finishToken(TokenizerContext tokenizerContext) {
-        String lexeme = tokenizerContext.tokenBuilder.toString();
-        if (!lexeme.isBlank()) {
-            tokenizerContext.tokens.add(Token.tryParse(lexeme, tokenizerContext.tokenPosition));
-        }
-        tokenizerContext.state = TokenizerState.WHITESPACE;
-        tokenizerContext.tokenBuilder.setLength(0);
-    }
 
     private static class TokenizerContext {
 
         private final List<Token> tokens = new ArrayList<>();
-        private int currentRow = 0;
-        private TokenizerState state = TokenizerState.WHITESPACE;
         private final StringBuilder tokenBuilder = new StringBuilder();
+        private TokenizerState state = TokenizerState.WHITESPACE;
         private SourcePosition tokenPosition = new SourcePosition(0, 0);
+        private int currentRow = 0;
+
+        private Collection<Token> getTokens() {
+            return List.copyOf(this.tokens);
+        }
+
+        private StringBuilder getTokenBuilder() {
+            return this.tokenBuilder;
+        }
+
+        private TokenizerState getState() {
+            return this.state;
+        }
+
+        private SourcePosition getTokenPosition() {
+            return this.tokenPosition;
+        }
+
+        private void setCurrentRow(int row) {
+            this.currentRow = row;
+        }
+
+        private int getCurrentRow() {
+            return this.currentRow;
+        }
+
+        private void appendCharacter(SourceCharacter sourceCharacter) {
+            this.tokenBuilder.append(sourceCharacter.character());
+        }
+
+        private void beginToken(SourceCharacter sourceCharacter) {
+            this.tokenBuilder.setLength(0);
+            this.appendCharacter(sourceCharacter);
+            this.state = sourceCharacter.character() == '\"' ? TokenizerState.STRING_TOKEN : TokenizerState.TOKEN;
+            this.tokenPosition = sourceCharacter.sourcePosition();
+        }
+
+        private void finishToken() {
+            String lexeme = this.tokenBuilder.toString();
+            if (!lexeme.isBlank()) {
+                this.tokens.add(Token.tryParse(lexeme, this.tokenPosition));
+            }
+            this.state = TokenizerState.WHITESPACE;
+            this.tokenBuilder.setLength(0);
+        }
 
     }
 

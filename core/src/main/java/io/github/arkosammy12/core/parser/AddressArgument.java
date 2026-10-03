@@ -1,35 +1,13 @@
 package io.github.arkosammy12.core.parser;
 
-import io.github.arkosammy12.core.lexer.SourcePosition;
-
 public sealed interface AddressArgument {
 
-    record LabelReference(String name) implements AddressArgument {}
+    record Resolved(int address) implements AddressArgument {}
 
-    record Value(int value) implements AddressArgument {}
+    sealed interface Unresolved extends AddressArgument {}
 
-    sealed interface InternalPlaceholder extends AddressArgument {
+    record NamedLabelReference(String name) implements Unresolved {}
 
-        SourcePosition getSourcePosition();
-
-    }
-
-    record WhileForwardJumpPlaceholder(SourcePosition sourcePosition) implements InternalPlaceholder {
-
-        @Override
-        public SourcePosition getSourcePosition() {
-            return this.sourcePosition();
-        }
-
-    }
-
-    record AgainForwardJumpPlaceholder(SourcePosition sourcePosition) implements InternalPlaceholder {
-
-        @Override
-        public SourcePosition getSourcePosition() {
-            return this.sourcePosition();
-        }
-
-    }
+    record AddressedLabelReference(int keyAddress) implements Unresolved {}
 
 }

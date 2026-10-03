@@ -5,12 +5,12 @@ import java.util.List;
 
 public final class IfElseBlock extends IfBlock {
 
-    private final Collection<CodeElement> ifBlockStatements;
     private final JumpStatement jumpAboveIfBlockStatement;
-    private final Collection<CodeElement> elseBlockStatements;
+    private final Collection<CodeElement> ifBlockStatements;
     private final JumpStatement jumpAboveElseBlockStatement;
+    private final Collection<CodeElement> elseBlockStatements;
 
-    public IfElseBlock(int offset, Collection<CodePrimitive> conditionalExpressionOpcodes, Collection<CodeElement> ifBlockStatements, JumpStatement jumpAboveIfBlockStatement, Collection<CodeElement> elseBlockStatements, JumpStatement jumpAboveElseBlockStatement) {
+    public IfElseBlock(int offset, Collection<CodePrimitive> conditionalExpressionOpcodes, JumpStatement jumpAboveIfBlockStatement, Collection<CodeElement> ifBlockStatements, JumpStatement jumpAboveElseBlockStatement, Collection<CodeElement> elseBlockStatements) {
         super(offset, conditionalExpressionOpcodes);
         this.ifBlockStatements = List.copyOf(ifBlockStatements);
         this.jumpAboveIfBlockStatement = jumpAboveIfBlockStatement;

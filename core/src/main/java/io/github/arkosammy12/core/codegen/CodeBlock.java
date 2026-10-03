@@ -2,7 +2,7 @@ package io.github.arkosammy12.core.codegen;
 
 import java.util.Collection;
 
-public sealed abstract class CodeBlock extends CodeElement permits IfBlock, LoopBlock {
+public sealed abstract class CodeBlock extends CodeElement permits IfBlock {
 
     public CodeBlock(int offset) {
         super(offset);
