@@ -2,8 +2,11 @@ package io.github.arkosammy12.core.codegen;
 
 public final class SetRegisterToDelayTimerAssignment extends Assignment {
 
-    public SetRegisterToDelayTimerAssignment(int offset) {
+    private final int x;
+
+    public SetRegisterToDelayTimerAssignment(int offset, int x) {
         super(offset);
+        this.x = x;
     }
 
     @Override

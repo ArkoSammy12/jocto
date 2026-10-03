@@ -1,14 +1,15 @@
 package io.github.arkosammy12.core.codegen;
 
-public final class IfBlock extends InstructionBlock {
+import java.util.Collection;
+import java.util.List;
 
-    public IfBlock(int offset) {
+public abstract sealed class IfBlock extends CodeBlock permits IfBeginEndBlock, IfElseBlock, IfThenBlock {
+
+    protected final Collection<CodePrimitive> conditionalExpressionOpcodes;
+
+    public IfBlock(int offset, Collection<CodePrimitive> conditionalExpressionOpcodes) {
         super(offset);
-    }
-
-    @Override
-    public int getSizeInBytes() {
-        return 0;
+        this.conditionalExpressionOpcodes = List.copyOf(conditionalExpressionOpcodes);
     }
 
 }

@@ -1,14 +1,17 @@
 package io.github.arkosammy12.core.codegen;
 
-public final class LoopBlock extends InstructionBlock {
+import java.util.Collection;
+import java.util.List;
+
+public final class LoopBlock extends CodeBlock {
 
     public LoopBlock(int offset) {
         super(offset);
     }
 
     @Override
-    public int getSizeInBytes() {
-        return 0;
+    public Collection<CodePrimitive> expand() {
+        return List.of();
     }
 
 }

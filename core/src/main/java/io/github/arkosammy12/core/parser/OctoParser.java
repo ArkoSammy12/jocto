@@ -1,6 +1,8 @@
 package io.github.arkosammy12.core.parser;
 
 import io.github.arkosammy12.core.codegen.*;
+import io.github.arkosammy12.core.grammar.IfBlockKeywordLexeme;
+import io.github.arkosammy12.core.grammar.LoopBlockKeywordLexeme;
 import io.github.arkosammy12.core.lexer.SourcePosition;
 import io.github.arkosammy12.core.lexer.SourceStream;
 import io.github.arkosammy12.core.parser.directive.DirectiveDefinition;
@@ -14,50 +16,327 @@ public class OctoParser {
     public ParserResult parseTokens(SourceStream<Token> tokenStream) {
         ParserContext parserContext = new ParserContext(tokenStream);
         try {
-            this.parseTopLevel(parserContext);
+            while (!parserContext.tokenStream.isEmpty()) {
+                Optional<Token> optionalToken = parserContext.tokenStream.poll();
+                if (optionalToken.isPresent()) {
+                    Token token = optionalToken.get();
+                    Optional<? extends CodeElement> codeElement = switch (token) {
+                        case IfBlockKeywordToken ifBlockKeywordToken -> this.parseIfBlockKeywordToken(parserContext, ifBlockKeywordToken);
+                        case LoopBlockKeywordToken loopBlockKeywordToken -> this.parseLoopBlockKeywordToken(parserContext, loopBlockKeywordToken);
+                        default -> this.parseTopLevel(parserContext, token);
+                    };
+                    codeElement.ifPresent(parserContext.codeElements::add);
+                }
+            }
             return new ParserResult.Ok(List.copyOf(parserContext.codeElements), parserContext.getLabelDefinitions());
         } catch (ParserException e) {
             return e.toErrorResult();
         }
     }
 
-    private void parseTopLevel(ParserContext parserContext) throws ParserException {
-        while (!parserContext.tokenStream.isEmpty()) {
-            Optional<Token> optionalToken = parserContext.tokenStream.poll();
-            if (optionalToken.isPresent()) {
-                Token token = optionalToken.get();
-                Optional<CodeElement> optionalCodeElement = this.parseToken(parserContext, token);
-                if (optionalCodeElement.isPresent()) {
-                    CodeElement codeElement = optionalCodeElement.get();
-                    parserContext.codeElements.add(codeElement);
-                    parserContext.incrementHere(token, codeElement);
+    private Optional<? extends CodeElement> parseTopLevel(ParserContext parserContext, Token token) throws ParserException {
+        Optional<CodePrimitive> codePrimitive = this.parseToken(parserContext, token);
+        if (codePrimitive.isPresent()) {
+            parserContext.incrementHere(token, codePrimitive.get());
+        }
+        return codePrimitive;
+    }
+
+    private Optional<CodeElement> parseIfBlockKeywordToken(ParserContext parserContext, IfBlockKeywordToken ifBlockKeywordToken) throws ParserException {
+        if (ifBlockKeywordToken.getIfBlockKeywordLexeme() != IfBlockKeywordLexeme.IF) {
+            throw new ParserException("Unmatched '%s' if block keyword!".formatted(ifBlockKeywordToken.getIfBlockKeywordLexeme()), ifBlockKeywordToken.getSourcePosition());
+        }
+        // HERE is pointing to the first opcode of the conditional expression
+        int firstConditionalOpcodeOffset = parserContext.here;
+        List<CodePrimitive> conditionalExpressionOpcodes = this.resolveConditionalExpression(parserContext, ifBlockKeywordToken);
+
+        IfBlockKeywordToken ifBlockBeginningToken = this.pollTokenOrThrow(IfBlockKeywordToken.class, parserContext, "Unexpected if block beginning!", ifBlockKeywordToken.getSourcePosition());
+        return switch (ifBlockBeginningToken.getIfBlockKeywordLexeme()) {
+            case THEN -> {
+                // HERE is pointing to the skipped instruction, which is surrounded by the if-then block
+                CodeElement ifThenBlockElement = null;
+                Token ifThenToken = null;
+                while (ifThenBlockElement == null && !parserContext.tokenStream.isEmpty()) {
+                    Optional<Token> optionalToken = this.pollToken(parserContext);
+                    if (optionalToken.isPresent()) {
+                        ifThenToken = optionalToken.get();
+                        ifThenBlockElement = (switch (ifThenToken) {
+                            case IfBlockKeywordToken innerIfBlockKeyword -> this.parseIfBlockKeywordToken(parserContext, innerIfBlockKeyword);
+                            case LoopBlockKeywordToken innerLoopBlockKeyword -> this.parseLoopBlockKeywordToken(parserContext, innerLoopBlockKeyword);
+                            case Token innerToken -> this.parseToken(parserContext, innerToken);
+                        }).orElse(null);
+                    }
                 }
+                if (ifThenBlockElement instanceof CodePrimitive ifThenBlockCodePrimitive) {
+                    parserContext.incrementHere(ifThenToken, ifThenBlockCodePrimitive);
+                }
+                // HERE is pointing to the instruction after the skipped instruction, ending the if-then block
+                yield Optional.of(new IfThenBlock(firstConditionalOpcodeOffset, conditionalExpressionOpcodes, ifThenBlockElement));
+            }
+            case BEGIN -> {
+                // HERE is pointing to the jump instruction that will jump to the end if the if-begin block or to the
+                // else case of the if-else block
+
+                // Invert the skip instruction since now the skip instruction will surround the jump instruction that
+                // prevents the if block from being executed, and not the execution of the if block itself
+                conditionalExpressionOpcodes = this.invertSkips(conditionalExpressionOpcodes);
+
+                LabelableInstruction jumpAboveIfBlockStatement = new JumpStatement(parserContext.here, new AddressArgument.LabelReference("if-block-initial-jump"));
+                parserContext.incrementHere(ifBlockBeginningToken, (JumpStatement) jumpAboveIfBlockStatement);
+
+                // HERE now points to the first instruction of the if block within the if-begin or if-else block
+                // From now on we are looking for an 'end' or an 'else' followed by an 'end'
+
+                List<CodeElement> ifBlockElements = new ArrayList<>();
+                List<CodeElement> elseBlockElements = null;
+                LabelableInstruction jumpAboveElseBlockStatement = null;
+
+                while (!parserContext.tokenStream.isEmpty()) {
+                    Optional<Token> optionalToken = this.pollToken(parserContext);
+                    if (optionalToken.isPresent()) {
+                        Token token = optionalToken.get();
+                        Optional<? extends CodeElement> optionalCodeElement = Optional.empty();
+                        if (token instanceof IfBlockKeywordToken innerIfBlockKeyword) {
+                            switch (innerIfBlockKeyword.getIfBlockKeywordLexeme()) {
+                                case ELSE -> {
+                                    // HERE is pointing to the jump instruction at the end of the if block,
+                                    // that jumps to after the else block
+                                    jumpAboveElseBlockStatement = new JumpStatement(parserContext.here, new AddressArgument.LabelReference("if-block-end-jump-statement"));
+                                    parserContext.incrementHere(token, (JumpStatement) jumpAboveElseBlockStatement);
+
+                                    // HERE now points to the first instruction of the else block
+                                    jumpAboveIfBlockStatement = jumpAboveIfBlockStatement.resolve(parserContext.here);
+
+                                    elseBlockElements = new ArrayList<>();
+
+                                    // Just continue to the next iteration now that we've consumed the 'else' token
+                                    continue;
+                                }
+                                case END -> {
+                                    // HERE is pointing to the first instruction after the end if the if-begin or if-else block
+                                    if (elseBlockElements == null) {
+                                        jumpAboveIfBlockStatement = jumpAboveIfBlockStatement.resolve(parserContext.here);
+                                        yield Optional.of(new IfBeginEndBlock(firstConditionalOpcodeOffset, conditionalExpressionOpcodes, ifBlockElements, (JumpStatement) jumpAboveIfBlockStatement));
+                                    } else {
+                                        // Resolve the jump statement at the end of the if block and before the else block,
+                                        // which jumps over the else block
+                                        jumpAboveElseBlockStatement = jumpAboveElseBlockStatement.resolve(parserContext.here);
+                                        yield Optional.of(new IfElseBlock(firstConditionalOpcodeOffset, conditionalExpressionOpcodes, ifBlockElements, (JumpStatement) jumpAboveIfBlockStatement, elseBlockElements, (JumpStatement) jumpAboveElseBlockStatement));
+                                    }
+                                }
+                                default -> optionalCodeElement = this.parseIfBlockKeywordToken(parserContext, innerIfBlockKeyword);
+                            }
+                        } else {
+                            optionalCodeElement = switch (token) {
+                                case LoopBlockKeywordToken innerLoopBlockKeyword -> this.parseLoopBlockKeywordToken(parserContext, innerLoopBlockKeyword);
+                                case Token innerToken -> this.parseToken(parserContext, innerToken);
+                            };
+                        }
+                        if (optionalCodeElement.isPresent()) {
+                            CodeElement codeElement = optionalCodeElement.get();
+                            if (codeElement instanceof CodePrimitive codePrimitive) {
+                                parserContext.incrementHere(token, codePrimitive);
+                            }
+                            Objects.requireNonNullElse(elseBlockElements, ifBlockElements).add(codeElement);
+                        }
+                    }
+                }
+                throw new ParserException("Unterminated if block!", ifBlockKeywordToken.getSourcePosition());
+            }
+            default -> throw new ParserException("Unexpected if block beginning!", ifBlockKeywordToken.getSourcePosition());
+        };
+    }
+
+    private Optional<CodeElement> parseLoopBlockKeywordToken(ParserContext parserContext, LoopBlockKeywordToken loopBlockKeywordToken) throws ParserException {
+        // Plan. Fail on encountering a 'while` after a 'then'.
+        // In here we handle emitting a jump with a placer holder after encountering an 'again',
+        // which will be filled in by the expansion of the loop block during codegen.
+        // We will handle a 'while' similarly within an if-begin or if-else block in the method above
+        // In here we will handle constructing the loop block and patching the backwards jump corresponding to the
+        // matching 'again' and emitting placeholder forward jumps for top level 'while' statements.
+
+        if (loopBlockKeywordToken.getLoopBlockKeyword() != LoopBlockKeywordLexeme.LOOP) {
+
+         }
+
+        return Optional.empty();
+    }
+
+    private List<CodePrimitive> invertSkips(List<CodePrimitive> codePrimitives) {
+        List<CodePrimitive> invertedSkips = new ArrayList<>();
+        for (CodePrimitive primitive : codePrimitives) {
+            if (primitive instanceof SkipInstruction skipInstruction) {
+                invertedSkips.add(skipInstruction.invertCondition());
+            } else {
+                invertedSkips.add(primitive);
             }
         }
+        return List.copyOf(invertedSkips);
     }
 
-    private Optional<CodeElement> parseIfBlockKeywordToken(ParserContext parserContext, IfBlockKeywordToken ifBlockKeywordToken) {
-        return Optional.empty();
+    private List<CodePrimitive> resolveConditionalExpression(ParserContext parserContext, Token token) throws ParserException {
+        RegisterLiteralToken vx = this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected vx in conditional expression!", token.getSourcePosition());
+        ConditionalOperatorToken conditionalOperatorToken = this.pollTokenOrThrow(ConditionalOperatorToken.class, parserContext, "Expected conditional operator in conditional statement!", vx.getSourcePosition());
+        ConditionalOperation conditionalOperation = conditionalOperatorToken.getConditionalOperation();
+        return switch (conditionalOperation) {
+            case KEY_PRESSED -> {
+                CodePrimitive keyNotPressed = new SkipIfKeyNotPressed(parserContext.here, vx.getRegisterIndex());
+                parserContext.incrementHere(conditionalOperatorToken, keyNotPressed);
+                yield List.of(keyNotPressed);
+            }
+            case KEY_NOT_PRESSED -> {
+                CodePrimitive keyPressed = new SkipIfKeyPressed(parserContext.here, vx.getRegisterIndex());
+                parserContext.incrementHere(conditionalOperatorToken, keyPressed);
+                yield List.of(keyPressed);
+            }
+            default -> {
+                Token argumentToken = this.pollTokenOrThrow(parserContext, "Expected vy or NN argument in conditional expression!", conditionalOperatorToken.getSourcePosition());
+                yield switch (argumentToken) {
+                    case RegisterLiteralToken vy -> switch (conditionalOperation) {
+                        case EQUALITY -> {
+                            CodePrimitive skipIfRegistersNotEqual = new SkipIfRegistersNotEqual(parserContext.here, vx.getRegisterIndex(), vy.getRegisterIndex());
+                            parserContext.incrementHere(argumentToken, skipIfRegistersNotEqual);
+                            yield List.of(skipIfRegistersNotEqual);
+                        }
+                        case INEQUALITY -> {
+                            CodePrimitive skipIfRegistersEqual = new SkipIfRegistersEqual(parserContext.here, vx.getRegisterIndex(), vy.getRegisterIndex());
+                            parserContext.incrementHere(argumentToken, skipIfRegistersEqual);
+                            yield List.of(skipIfRegistersEqual);
+                        }
+                        case GREATER_THAN -> {
+                            CodePrimitive assign = new SetRegisterToRegisterAssignment(parserContext.here, 0xF,  vy.getRegisterIndex());
+                            parserContext.incrementHere(argumentToken, assign);
+
+                            CodePrimitive subtract = new LeftSubtractRegisterFromRegisterAssignment(parserContext.here, 0xF, vx.getRegisterIndex());
+                            parserContext.incrementHere(argumentToken, subtract);
+
+                            CodePrimitive skip = new SkipIfRegisterNotEqualsConstant(parserContext.here, 0xF, 0x00);
+                            parserContext.incrementHere(argumentToken, skip);
+
+                            yield List.of(assign, subtract, skip);
+                        }
+                        case GREATER_THAN_OR_EQUALS -> {
+                            CodePrimitive assign = new SetRegisterToRegisterAssignment(parserContext.here, 0xF,  vy.getRegisterIndex());
+                            parserContext.incrementHere(argumentToken, assign);
+
+                            CodePrimitive subtract = new RightSubtractRegisterFromRegisterAssignment(parserContext.here, 0xF, vx.getRegisterIndex());
+                            parserContext.incrementHere(argumentToken, subtract);
+
+                            CodePrimitive skip = new SkipIfRegisterEqualsConstant(parserContext.here, 0xF, 0x00);
+                            parserContext.incrementHere(argumentToken, skip);
+
+                            yield List.of(assign, subtract, skip);
+                        }
+                        case LESS_THAN -> {
+                            CodePrimitive assign = new SetRegisterToRegisterAssignment(parserContext.here, 0xF,  vy.getRegisterIndex());
+                            parserContext.incrementHere(argumentToken, assign);
+
+                            CodePrimitive subtract = new RightSubtractRegisterFromRegisterAssignment(parserContext.here, 0xF, vx.getRegisterIndex());
+                            parserContext.incrementHere(argumentToken, subtract);
+
+                            CodePrimitive skip = new SkipIfRegisterNotEqualsConstant(parserContext.here, 0xF, 0x00);
+                            parserContext.incrementHere(argumentToken, skip);
+
+                            yield List.of(assign, subtract, skip);
+                        }
+                        case LESS_THAN_OR_EQUALS -> {
+                            CodePrimitive assign = new SetRegisterToRegisterAssignment(parserContext.here, 0xF,  vy.getRegisterIndex());
+                            parserContext.incrementHere(argumentToken, assign);
+
+                            CodePrimitive subtract = new LeftSubtractRegisterFromRegisterAssignment(parserContext.here, 0xF, vx.getRegisterIndex());
+                            parserContext.incrementHere(argumentToken, subtract);
+
+                            CodePrimitive skip = new SkipIfRegisterEqualsConstant(parserContext.here, 0xF, 0x00);
+                            parserContext.incrementHere(argumentToken, skip);
+
+                            yield List.of(assign, subtract, skip);
+                        }
+                        default -> throw new IllegalStateException("Unexpected value: " + conditionalOperation);
+                    };
+                    case IntegerLiteralToken nn -> {
+                        if (!nn.is8Bits()) {
+                            throw new ParserException("Conditional argument '%d' does not fit in 8 bits [-128, 255]".formatted(nn.getValue()), nn.getSourcePosition());
+                        }
+                        yield switch (conditionalOperation) {
+                            case EQUALITY -> {
+                                CodePrimitive skipIfRegisterNotEqualConstant = new SkipIfRegisterNotEqualsConstant(parserContext.here, vx.getRegisterIndex(), nn.getValue());
+                                parserContext.incrementHere(argumentToken, skipIfRegisterNotEqualConstant);
+                                yield List.of(skipIfRegisterNotEqualConstant);
+                            }
+                            case INEQUALITY -> {
+                                CodePrimitive skipIfRegisterEqualsConstant = new SkipIfRegisterEqualsConstant(parserContext.here, vx.getRegisterIndex(), nn.getValue());
+                                parserContext.incrementHere(argumentToken, skipIfRegisterEqualsConstant);
+                                yield List.of(skipIfRegisterEqualsConstant);
+                            }
+                            case GREATER_THAN -> {
+                                CodePrimitive assign = new SetRegisterToConstantAssignment(parserContext.here, 0xF,  nn.getValue());
+                                parserContext.incrementHere(argumentToken, assign);
+
+                                CodePrimitive subtract = new LeftSubtractRegisterFromRegisterAssignment(parserContext.here, 0xF, vx.getRegisterIndex());
+                                parserContext.incrementHere(argumentToken, subtract);
+
+                                CodePrimitive skip = new SkipIfRegisterNotEqualsConstant(parserContext.here, 0xF, 0x00);
+                                parserContext.incrementHere(argumentToken, skip);
+
+                                yield List.of(assign, subtract, skip);
+                            }
+                            case GREATER_THAN_OR_EQUALS -> {
+                                CodePrimitive assign = new SetRegisterToConstantAssignment(parserContext.here, 0xF,  nn.getValue());
+                                parserContext.incrementHere(argumentToken, assign);
+
+                                CodePrimitive subtract = new RightSubtractRegisterFromRegisterAssignment(parserContext.here, 0xF, vx.getRegisterIndex());
+                                parserContext.incrementHere(argumentToken, subtract);
+
+                                CodePrimitive skip = new SkipIfRegisterEqualsConstant(parserContext.here, 0xF, 0x00);
+                                parserContext.incrementHere(argumentToken, skip);
+
+                                yield List.of(assign, subtract, skip);
+                            }
+                            case LESS_THAN -> {
+                                CodePrimitive assign = new SetRegisterToConstantAssignment(parserContext.here, 0xF,  nn.getValue());
+                                parserContext.incrementHere(argumentToken, assign);
+
+                                CodePrimitive subtract = new RightSubtractRegisterFromRegisterAssignment(parserContext.here, 0xF, vx.getRegisterIndex());
+                                parserContext.incrementHere(argumentToken, subtract);
+
+                                CodePrimitive skip = new SkipIfRegisterNotEqualsConstant(parserContext.here, 0xF, 0x00);
+                                parserContext.incrementHere(argumentToken, skip);
+
+                                yield List.of(assign, subtract, skip);
+                            }
+                            case LESS_THAN_OR_EQUALS -> {
+                                CodePrimitive assign = new SetRegisterToConstantAssignment(parserContext.here, 0xF,  nn.getValue());
+                                parserContext.incrementHere(argumentToken, assign);
+
+                                CodePrimitive subtract = new LeftSubtractRegisterFromRegisterAssignment(parserContext.here, 0xF, vx.getRegisterIndex());
+                                parserContext.incrementHere(argumentToken, subtract);
+
+                                CodePrimitive skip = new SkipIfRegisterEqualsConstant(parserContext.here, 0xF, 0x00);
+                                parserContext.incrementHere(argumentToken, skip);
+
+                                yield List.of(assign, subtract, skip);
+                            }
+                            default -> throw new IllegalStateException("Unexpected value: " + conditionalOperation);
+                        };
+                    }
+                    case Token t -> throw new ParserException("Invalid conditional expression argument '%s'!".formatted(t.getLexeme()), t.getSourcePosition());
+                };
+            }
+        };
     }
 
-    private Optional<CodeElement> parseLoopBlockKeywordToken(ParserContext parserContext, LoopBlockKeywordToken loopBlockKeywordToken) {
-        return Optional.empty();
-    }
-
-    private Optional<CodeElement> parseToken(ParserContext parserContext, Token token) throws ParserException  {
+    private Optional<CodePrimitive> parseToken(ParserContext parserContext, Token token) throws ParserException  {
         return switch (token) {
             case DirectiveToken directiveToken -> this.parseDirective(parserContext, directiveToken);
             case InstructionStatementNameToken instructionStatementNameToken -> this.parseInstructionStatementNameToken(parserContext, instructionStatementNameToken);
             case LiteralToken literalToken -> this.parseLiteral(parserContext, literalToken);
             case IndexRegisterToken indexRegisterToken -> this.parseIndexRegister(parserContext, indexRegisterToken);
             case AssignmentKeywordToken assignmentKeywordToken -> this.parseAssignmentKeywordToken(parserContext, assignmentKeywordToken);
-            case IfBlockKeywordToken ifBlockKeywordToken -> this.parseIfBlockKeywordToken(parserContext, ifBlockKeywordToken);
-            case LoopBlockKeywordToken loopBlockKeywordToken -> this.parseLoopBlockKeywordToken(parserContext, loopBlockKeywordToken);
             default -> this.checkReservedName(parserContext, token);
         };
     }
 
-    private Optional<CodeElement> parseInstructionStatementNameToken(ParserContext parserContext, InstructionStatementNameToken instructionStatementNameToken) throws ParserException {
+    private Optional<CodePrimitive> parseInstructionStatementNameToken(ParserContext parserContext, InstructionStatementNameToken instructionStatementNameToken) throws ParserException {
         return switch (instructionStatementNameToken) {
             case SemicolonToken _ -> Optional.of(new ReturnStatement(parserContext.here));
             case NonSymbolInstructionStatementKeywordToken nonSymbolInstructionStatementKeywordToken -> switch (nonSymbolInstructionStatementKeywordToken.getInstructionStatementKeyword()) {
@@ -154,7 +433,7 @@ public class OctoParser {
         };
     }
     
-    private Optional<CodeElement> parseLiteral(ParserContext parserContext, LiteralToken literalToken) throws ParserException {
+    private Optional<CodePrimitive> parseLiteral(ParserContext parserContext, LiteralToken literalToken) throws ParserException {
         return switch (literalToken) {
             case RegisterLiteralToken registerLiteralToken -> this.parseRegisterLiteral(parserContext, registerLiteralToken);
             case IntegerLiteralToken integerLiteralToken -> {
@@ -168,7 +447,7 @@ public class OctoParser {
         };
     }
 
-    private Optional<CodeElement> parseAssignmentKeywordToken(ParserContext parserContext, AssignmentKeywordToken assignmentKeywordToken) throws ParserException {
+    private Optional<CodePrimitive> parseAssignmentKeywordToken(ParserContext parserContext, AssignmentKeywordToken assignmentKeywordToken) throws ParserException {
         return (switch (assignmentKeywordToken.getAssignmentKeyword()) {
             case DELAY -> {
                 if (this.pollTokenOrThrow(AssignmentOperatorToken.class, parserContext, "Expected assignment operator ':=' after delay statement!", assignmentKeywordToken.getSourcePosition()).getAssignmentOperation() != AssignmentOperation.SET) {
@@ -192,52 +471,52 @@ public class OctoParser {
         });
     }
     
-    private Optional<CodeElement> parseRegisterLiteral(ParserContext parserContext, RegisterLiteralToken registerLiteralToken) throws ParserException {
-        return switch (this.pollTokenOrThrow(AssignmentOperatorToken.class, parserContext, "Unknown operator on register assignment statement!", registerLiteralToken.getSourcePosition()).getAssignmentOperation()) {
-            case BITWISE_OR -> Optional.of(new BitwiseOrRegisterAssignment(parserContext.here, registerLiteralToken.getRegisterIndex(), this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected vy argument after 'vx |=' assignment!", registerLiteralToken.getSourcePosition()).getRegisterIndex()));
-            case BITWISE_AND -> Optional.of(new BitwiseAndRegisterAssignment(parserContext.here, registerLiteralToken.getRegisterIndex(), this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected vy argument after 'vx &=' assignment!", registerLiteralToken.getSourcePosition()).getRegisterIndex()));
-            case BITWISE_XOR -> Optional.of(new BitwiseXorRegisterAssignment(parserContext.here, registerLiteralToken.getRegisterIndex(), this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected vy argument after 'vx ^=' assignment!", registerLiteralToken.getSourcePosition()).getRegisterIndex()));
-            case RIGHT_SHIFT -> Optional.of(new RightShiftRegisterAssignment(parserContext.here, registerLiteralToken.getRegisterIndex(), this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected vy argument after 'vx >>=' assignment!", registerLiteralToken.getSourcePosition()).getRegisterIndex()));
-            case LEFT_SHIFT -> Optional.of(new LeftShiftRegisterAssignment(parserContext.here, registerLiteralToken.getRegisterIndex(), this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected vy argument after 'vx <<=' assignment!", registerLiteralToken.getSourcePosition()).getRegisterIndex()));
-            case RIGHT_SUBTRACT -> Optional.of(new RightSubtractRegisterFromRegisterAssignment(parserContext.here, registerLiteralToken.getRegisterIndex(), this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected vy argument after 'vx =-' assignment!", registerLiteralToken.getSourcePosition()).getRegisterIndex()));
-            case ADD -> switch (this.pollTokenOrThrow(parserContext, "Unterminated 'vx += ' statement!", registerLiteralToken.getSourcePosition())) {
-                case RegisterLiteralToken vy -> Optional.of(new AddRegisterToRegisterAssignment(parserContext.here, registerLiteralToken.getRegisterIndex(), vy.getRegisterIndex()));
+    private Optional<CodePrimitive> parseRegisterLiteral(ParserContext parserContext, RegisterLiteralToken vx) throws ParserException {
+        return switch (this.pollTokenOrThrow(AssignmentOperatorToken.class, parserContext, "Unknown operator on register assignment statement!", vx.getSourcePosition()).getAssignmentOperation()) {
+            case BITWISE_OR -> Optional.of(new BitwiseOrRegisterAssignment(parserContext.here, vx.getRegisterIndex(), this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected vy argument after 'vx |=' assignment!", vx.getSourcePosition()).getRegisterIndex()));
+            case BITWISE_AND -> Optional.of(new BitwiseAndRegisterAssignment(parserContext.here, vx.getRegisterIndex(), this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected vy argument after 'vx &=' assignment!", vx.getSourcePosition()).getRegisterIndex()));
+            case BITWISE_XOR -> Optional.of(new BitwiseXorRegisterAssignment(parserContext.here, vx.getRegisterIndex(), this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected vy argument after 'vx ^=' assignment!", vx.getSourcePosition()).getRegisterIndex()));
+            case RIGHT_SHIFT -> Optional.of(new RightShiftRegisterAssignment(parserContext.here, vx.getRegisterIndex(), this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected vy argument after 'vx >>=' assignment!", vx.getSourcePosition()).getRegisterIndex()));
+            case LEFT_SHIFT -> Optional.of(new LeftShiftRegisterAssignment(parserContext.here, vx.getRegisterIndex(), this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected vy argument after 'vx <<=' assignment!", vx.getSourcePosition()).getRegisterIndex()));
+            case RIGHT_SUBTRACT -> Optional.of(new RightSubtractRegisterFromRegisterAssignment(parserContext.here, vx.getRegisterIndex(), this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected vy argument after 'vx =-' assignment!", vx.getSourcePosition()).getRegisterIndex()));
+            case ADD -> switch (this.pollTokenOrThrow(parserContext, "Unterminated 'vx += ' statement!", vx.getSourcePosition())) {
+                case RegisterLiteralToken vy -> Optional.of(new AddRegisterToRegisterAssignment(parserContext.here, vx.getRegisterIndex(), vy.getRegisterIndex()));
                 case IntegerLiteralToken n -> {
                     if (n.is8Bits()) {
-                        yield Optional.of(new AddConstantToRegisterAssignment(parserContext.here, n.getValue()));
+                        yield Optional.of(new AddConstantToRegisterAssignment(parserContext.here, vx.getRegisterIndex(), n.getValue()));
                     } else {
                         throw new ParserException("Argument '%d' for 'vx +=' does not fit in a byte!".formatted(n.getValue()), n.getSourcePosition());
                     }
                 }
                 case Token token -> throw new ParserException("Unexpected argument '%s' for 'vx +=' statement".formatted(token.getLexeme()), token.getSourcePosition());
             };
-            case LEFT_SUBTRACT -> switch (this.pollTokenOrThrow(parserContext, "Unterminated 'vx -= ' statement!", registerLiteralToken.getSourcePosition())) {
-                case RegisterLiteralToken vy -> Optional.of(new LeftSubtractRegisterFromRegisterAssignment(parserContext.here, registerLiteralToken.getRegisterIndex(), vy.getRegisterIndex()));
+            case LEFT_SUBTRACT -> switch (this.pollTokenOrThrow(parserContext, "Unterminated 'vx -= ' statement!", vx.getSourcePosition())) {
+                case RegisterLiteralToken vy -> Optional.of(new LeftSubtractRegisterFromRegisterAssignment(parserContext.here, vx.getRegisterIndex(), vy.getRegisterIndex()));
                 case IntegerLiteralToken n -> {
                     if (n.is8Bits()) {
-                        yield Optional.of(new AddConstantToRegisterAssignment(parserContext.here, -n.getValue()));
+                        yield Optional.of(new AddConstantToRegisterAssignment(parserContext.here, vx.getRegisterIndex(), -n.getValue()));
                     } else {
                         throw new ParserException("Argument '%d' for 'vx -=' does not fit in a byte!".formatted(n.getValue()), n.getSourcePosition());
                     }
                 }
                 case Token token -> throw new ParserException("Unexpected argument '%s' for 'vx -=' statement".formatted(token.getLexeme()), token.getSourcePosition());
             };
-            case SET -> switch (this.pollTokenOrThrow(parserContext, "Unterminated 'vx := ' statement!", registerLiteralToken.getSourcePosition())) {
-                case RegisterLiteralToken vy -> Optional.of(new SetRegisterToRegisterAssignment(parserContext.here, registerLiteralToken.getRegisterIndex(), vy.getRegisterIndex()));
+            case SET -> switch (this.pollTokenOrThrow(parserContext, "Unterminated 'vx := ' statement!", vx.getSourcePosition())) {
+                case RegisterLiteralToken vy -> Optional.of(new SetRegisterToRegisterAssignment(parserContext.here, vx.getRegisterIndex(), vy.getRegisterIndex()));
                 case IntegerLiteralToken n -> {
                     if (n.is8Bits()) {
-                        yield Optional.of(new SetRegisterToConstantAssignment(parserContext.here, n.getValue()));
+                        yield Optional.of(new SetRegisterToConstantAssignment(parserContext.here, vx.getRegisterIndex(), n.getValue()));
                     } else {
                         throw new ParserException("Argument '%d' for 'vx :=' does not fit in a byte!".formatted(n.getValue()), n.getSourcePosition());
                     }
                 }
                 case AssignmentKeywordToken assignmentKeywordToken -> switch (assignmentKeywordToken.getAssignmentKeyword()) {
-                    case DELAY -> Optional.of(new SetRegisterToDelayTimerAssignment(parserContext.here));
-                    case KEY -> Optional.of(new SetRegisterToKeyAssignment(parserContext.here));
+                    case DELAY -> Optional.of(new SetRegisterToDelayTimerAssignment(parserContext.here, vx.getRegisterIndex()));
+                    case KEY -> Optional.of(new SetRegisterToKeyAssignment(parserContext.here, vx.getRegisterIndex()));
                     case RANDOM -> {
-                        IntegerLiteralToken nn = this.pollTokenOrThrow(IntegerLiteralToken.class, parserContext, "Expected literal argument after 'vx := random' assignment!", registerLiteralToken.getSourcePosition());
+                        IntegerLiteralToken nn = this.pollTokenOrThrow(IntegerLiteralToken.class, parserContext, "Expected literal argument after 'vx := random' assignment!", vx.getSourcePosition());
                         if (nn.is8Bits()) {
-                            yield Optional.of(new SetRegisterToRandomAssignment(parserContext.here, nn.getValue()));
+                            yield Optional.of(new SetRegisterToRandomAssignment(parserContext.here, vx.getRegisterIndex(), nn.getValue()));
                         } else {
                             throw new ParserException("Argument '%d' for 'vx := random' does not fit in a byte!".formatted(nn.getValue()), nn.getSourcePosition());
                         }
@@ -249,7 +528,7 @@ public class OctoParser {
         };
     }
 
-    private Optional<CodeElement> parseIndexRegister(ParserContext parserContext, IndexRegisterToken indexRegisterToken) throws ParserException {
+    private Optional<CodePrimitive> parseIndexRegister(ParserContext parserContext, IndexRegisterToken indexRegisterToken) throws ParserException {
         return switch (this.pollTokenOrThrow(AssignmentOperatorToken.class, parserContext, "Expected assignment operators ':=' or '+=' after an 'i' assignment!", indexRegisterToken.getSourcePosition()).getAssignmentOperation()) {
             case ADD -> Optional.of(new IncrementIndexRegisterAssignment(parserContext.here, this.pollTokenOrThrow(RegisterLiteralToken.class, parserContext, "Expected 'vx' argument after 'i' increment statement!", indexRegisterToken.getSourcePosition()).getRegisterIndex()));
             case SET -> switch (this.pollTokenOrThrow(parserContext, "Expected assignment operators ':=' or '+=' after an 'i' assignment!", indexRegisterToken.getSourcePosition())) {
@@ -285,7 +564,7 @@ public class OctoParser {
         };
     }
 
-    private Optional<CodeElement> parseDirective(ParserContext parserContext, DirectiveToken directiveToken) throws ParserException {
+    private Optional<CodePrimitive> parseDirective(ParserContext parserContext, DirectiveToken directiveToken) throws ParserException {
         return switch (directiveToken.getDirective()) {
             case LABEL_DEFINITION -> {
                 Token token = this.pollTokenOrThrow(parserContext, "Expected label name following ':' directive!", directiveToken.getSourcePosition());
@@ -367,7 +646,7 @@ public class OctoParser {
         });
     }
 
-    private Optional<CodeElement> checkReservedName(ParserContext parserContext, Token token) throws ParserException {
+    private Optional<CodePrimitive> checkReservedName(ParserContext parserContext, Token token) throws ParserException {
         if (token instanceof ReservedNameToken) {
             throw new ParserException("The name '%s' is reserved and cannot be used as a label!".formatted(token.getLexeme()), token.getSourcePosition());
         } else {
@@ -409,8 +688,12 @@ public class OctoParser {
             this.directiveDefinitions.put(name, directiveDefinition);
         }
 
-        private void incrementHere(Token token, CodeElement codeElement) throws ParserException {
-            int newHere = this.here + codeElement.getSizeInBytes();
+        private void incrementHere(Token token, CodePrimitive codePrimitive) throws ParserException {
+            this.incrementHere(token, codePrimitive.getSizeInBytes());
+        }
+
+        private void incrementHere(Token token, int amount) throws ParserException {
+            int newHere = this.here + amount;
             if (newHere > 0xFFFF) {
                 throw new ParserException("ROM size exceeds the 16-bit integer limit!", token.getSourcePosition());
             }

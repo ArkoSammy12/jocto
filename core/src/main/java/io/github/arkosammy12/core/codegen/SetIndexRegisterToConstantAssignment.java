@@ -2,7 +2,7 @@ package io.github.arkosammy12.core.codegen;
 
 import io.github.arkosammy12.core.parser.AddressArgument;
 
-public final class SetIndexRegisterToConstantAssignment extends Assignment {
+public final class SetIndexRegisterToConstantAssignment extends Assignment implements LabelableInstruction {
 
     private final AddressArgument addressArgument;
 
@@ -14,6 +14,11 @@ public final class SetIndexRegisterToConstantAssignment extends Assignment {
     @Override
     public int getSizeInBytes() {
         return 2;
+    }
+
+    @Override
+    public LabelableInstruction resolve(int address) {
+        return new SetIndexRegisterToConstantAssignment(this.offset, new AddressArgument.Value(address));
     }
 
 }

@@ -1,6 +1,6 @@
 package io.github.arkosammy12.core.codegen;
 
-public final class ByteLiteral extends CodeElement {
+public final class ByteLiteral extends CodePrimitive {
 
     private final int value;
 

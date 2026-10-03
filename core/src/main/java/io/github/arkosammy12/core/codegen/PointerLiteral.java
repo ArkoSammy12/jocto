@@ -2,7 +2,7 @@ package io.github.arkosammy12.core.codegen;
 
 import io.github.arkosammy12.core.parser.AddressArgument;
 
-public final class PointerLiteral extends CodeElement {
+public final class PointerLiteral extends CodePrimitive {
 
     private final AddressArgument addressArgument;
 

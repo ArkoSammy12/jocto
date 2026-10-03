@@ -15,32 +15,11 @@ public class Main {
 
     static void main(String[] args) {
         String test = """
-                ###########################################
-                #
-                #  Tank
-                #
-                #  Classic Chip8 program translated from
-                #  VIPer Volume 1 Issue 1 (June 1978), pg 12-14
-                #  https://github.com/mattmikolay/viper/blob/master/volume1/issue1.pdf
-                #
-                #  Press 2/E/S/Q to move the tank.
-                #
-                ###########################################
-               
-                
-                : up    v2 += -1  i := tankup    ;
-                : down  v2 +=  1  i := tankdown  ;
-                : right v1 += -1  i := tankright ;
-                : left  v1 +=  1  i := tankleft  ;
-                
-                : main
-                  v1 := 0x20
-                  v2 := 0x10
-                  i := tankup
-                
-                    sprite v1 v2 7
-                    v0 := key
-                    sprite v1 v2 7
+                if v1 == 0x00 begin
+                    v1 := v2
+                else
+                    v3 := v4
+                end
                 """;
 
         SourceFile sourceFile = new SourceFile(List.of(test.split("\n")));
