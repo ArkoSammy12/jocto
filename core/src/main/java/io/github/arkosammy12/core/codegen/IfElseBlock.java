@@ -10,8 +10,8 @@ public final class IfElseBlock extends IfBlock {
     private final JumpStatement jumpAboveElseBlockStatement;
     private final Collection<CodeElement> elseBlockStatements;
 
-    public IfElseBlock(int offset, Collection<CodePrimitive> conditionalExpressionOpcodes, JumpStatement jumpAboveIfBlockStatement, Collection<CodeElement> ifBlockStatements, JumpStatement jumpAboveElseBlockStatement, Collection<CodeElement> elseBlockStatements) {
-        super(offset, conditionalExpressionOpcodes);
+    public IfElseBlock(Collection<CodePrimitive> conditionalExpressionOpcodes, JumpStatement jumpAboveIfBlockStatement, Collection<CodeElement> ifBlockStatements, JumpStatement jumpAboveElseBlockStatement, Collection<CodeElement> elseBlockStatements) {
+        super(conditionalExpressionOpcodes);
         this.ifBlockStatements = List.copyOf(ifBlockStatements);
         this.jumpAboveIfBlockStatement = jumpAboveIfBlockStatement;
         this.elseBlockStatements = List.copyOf(elseBlockStatements);

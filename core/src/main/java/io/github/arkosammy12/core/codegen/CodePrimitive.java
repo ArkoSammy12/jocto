@@ -2,8 +2,14 @@ package io.github.arkosammy12.core.codegen;
 
 public abstract sealed class CodePrimitive extends CodeElement permits Instruction, ByteLiteral, PointerLiteral {
 
+    protected final int offset;
+
     public CodePrimitive(int offset) {
-        super(offset);
+        this.offset = offset;
+    }
+
+    public int getOffset() {
+        return this.offset;
     }
 
     public abstract int getSizeInBytes();

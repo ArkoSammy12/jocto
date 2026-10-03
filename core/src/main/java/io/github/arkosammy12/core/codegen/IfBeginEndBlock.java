@@ -8,8 +8,8 @@ public final class IfBeginEndBlock extends IfBlock {
     private final JumpStatement jumpAboveIfBlockStatement;
     private final Collection<CodeElement> ifBlockStatements;
 
-    public IfBeginEndBlock(int offset, Collection<CodePrimitive> conditionalExpressionOpcodes, JumpStatement jumpAboveIfBlockStatement, Collection<CodeElement> ifBlockStatements) {
-        super(offset, conditionalExpressionOpcodes);
+    public IfBeginEndBlock(Collection<CodePrimitive> conditionalExpressionOpcodes, JumpStatement jumpAboveIfBlockStatement, Collection<CodeElement> ifBlockStatements) {
+        super(conditionalExpressionOpcodes);
         this.ifBlockStatements = List.copyOf(ifBlockStatements);
         this.jumpAboveIfBlockStatement = jumpAboveIfBlockStatement;
     }

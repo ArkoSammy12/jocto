@@ -7,8 +7,7 @@ public abstract sealed class IfBlock extends CodeBlock permits IfBeginEndBlock, 
 
     protected final Collection<CodePrimitive> conditionalExpressionOpcodes;
 
-    public IfBlock(int offset, Collection<CodePrimitive> conditionalExpressionOpcodes) {
-        super(offset);
+    public IfBlock(Collection<CodePrimitive> conditionalExpressionOpcodes) {
         this.conditionalExpressionOpcodes = List.copyOf(conditionalExpressionOpcodes);
     }
 

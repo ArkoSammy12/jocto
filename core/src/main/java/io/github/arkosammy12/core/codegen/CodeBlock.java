@@ -4,10 +4,6 @@ import java.util.Collection;
 
 public sealed abstract class CodeBlock extends CodeElement permits IfBlock {
 
-    public CodeBlock(int offset) {
-        super(offset);
-    }
-
     abstract public Collection<CodePrimitive> expand();
 
 }

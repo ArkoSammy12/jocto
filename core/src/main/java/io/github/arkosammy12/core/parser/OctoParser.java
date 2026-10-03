@@ -52,7 +52,6 @@ public class OctoParser {
             throw new ParserException("Unmatched '%s' if block keyword!".formatted(ifBlockKeywordToken.getIfBlockKeywordLexeme()), ifBlockKeywordToken.getSourcePosition());
         }
         // HERE is pointing to the first opcode of the conditional expression
-        int firstConditionalOpcodeOffset = parserContext.getHere();
         Collection<CodePrimitive> conditionalExpressionOpcodes = this.parseConditionalExpression(parserContext, ifBlockKeywordToken);
         for (CodePrimitive conditionalExpressionOpcode : conditionalExpressionOpcodes) {
             parserContext.incrementHere(ifBlockKeywordToken, conditionalExpressionOpcode);
@@ -77,7 +76,7 @@ public class OctoParser {
                 }
 
                 if (ifThenBlockElements.isEmpty()) {
-                    yield List.of(new IfThenBlock(firstConditionalOpcodeOffset, conditionalExpressionOpcodes));
+                    yield List.of(new IfThenBlock(conditionalExpressionOpcodes));
                 } else {
                     CodeElement ifThenBlockElement = ifThenBlockElements.getFirst();
                     if (ifThenBlockElement instanceof CodePrimitive codePrimitive) {
@@ -86,7 +85,7 @@ public class OctoParser {
 
                     // HERE is pointing to the instruction after the skipped instruction, ending the if-then block
                     Collection<CodeElement> codeElements = new ArrayList<>();
-                    codeElements.add(new IfThenBlock(firstConditionalOpcodeOffset, conditionalExpressionOpcodes, ifThenBlockElement));
+                    codeElements.add(new IfThenBlock(conditionalExpressionOpcodes, ifThenBlockElement));
 
                     for (int i = 1; i < ifThenBlockElements.size(); i++) {
                         CodeElement c = ifThenBlockElements.get(i);
@@ -138,12 +137,12 @@ public class OctoParser {
                                     // HERE is pointing to the first instruction after the end if the if-begin or if-else block
                                     if (elseBlockElements == null) {
                                         jumpAboveIfBlockStatement.resolve(parserContext.getHere());
-                                        yield List.of(new IfBeginEndBlock(firstConditionalOpcodeOffset, conditionalExpressionOpcodes, jumpAboveIfBlockStatement, ifBlockElements));
+                                        yield List.of(new IfBeginEndBlock(conditionalExpressionOpcodes, jumpAboveIfBlockStatement, ifBlockElements));
                                     } else {
                                         // Resolve the jump statement at the end of the if block and before the else block,
                                         // which jumps over the else block
                                         jumpAboveElseBlockStatement.resolve(parserContext.getHere());
-                                        yield List.of(new IfElseBlock(firstConditionalOpcodeOffset, conditionalExpressionOpcodes, jumpAboveIfBlockStatement, ifBlockElements, jumpAboveElseBlockStatement, elseBlockElements));
+                                        yield List.of(new IfElseBlock(conditionalExpressionOpcodes, jumpAboveIfBlockStatement, ifBlockElements, jumpAboveElseBlockStatement, elseBlockElements));
                                     }
                                 }
                                 default -> codeElements = this.parseIfBlockKeywordToken(parserContext, innerIfBlockKeyword);

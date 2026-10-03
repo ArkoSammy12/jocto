@@ -10,13 +10,13 @@ public final class IfThenBlock extends IfBlock {
     @Nullable
     private final CodeElement codeElement;
 
-    public IfThenBlock(int offset, Collection<CodePrimitive> conditionalExpressionOpcodes, @Nullable CodeElement codeElement) {
-        super(offset, conditionalExpressionOpcodes);
+    public IfThenBlock(Collection<CodePrimitive> conditionalExpressionOpcodes, @Nullable CodeElement codeElement) {
+        super(conditionalExpressionOpcodes);
         this.codeElement = codeElement;
     }
 
-    public IfThenBlock(int offset, Collection<CodePrimitive> conditionalExpressionOpcodes) {
-        this(offset, conditionalExpressionOpcodes, null);
+    public IfThenBlock(Collection<CodePrimitive> conditionalExpressionOpcodes) {
+        this(conditionalExpressionOpcodes, null);
     }
 
     @Override
