@@ -1,2 +1,2 @@
 # jocto
-A CHIP-8, SUPER-CHIP and XO-CHIP assembler written in Java
+An implementation of the CHIP-8 Octo assembler written in Java
