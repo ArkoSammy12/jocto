@@ -16,22 +16,7 @@ public class Main {
     static void main(String[] args) {
         String test = """
                 : main
-                loop
-                    v1 := v2
-                    v3 := v4
-                    while v1 == 0x00
-                    v4 := v5
-                    v6 := v7
-                    
-                    if v1 == 0x00 then i := 0x123
-                    
-                    if vf == 0x66 begin
-                        v9 := va
-                        while v9 == 0x99
-                    else 
-                        vb := vc
-                    end
-                again
+                v1 := v2
                 """;
 
         SourceFile sourceFile = new SourceFile(List.of(test.split("\n")));
@@ -48,10 +33,10 @@ public class Main {
                             IO.println(codeElement);
                         }
                     }
-                    case ParserResult.Error(String error, SourcePosition sourcePosition) -> IO.println("""
+                    case ParserResult.Error parserError -> IO.println("""
                     Assembly error!
-                    (%d:%d) %s
-                    """.formatted(sourcePosition.row() + 1, sourcePosition.column() + 1, error));
+                    %s %s
+                    """.formatted(parserError.getSourcePosition().map(position -> "(%d:%d)".formatted(position.row() + 1, position.column() + 1)).orElse(""), parserError.getError()));
                 }
             }
             case LexerResult.Error(String error, SourcePosition sourcePosition) -> IO.println("""

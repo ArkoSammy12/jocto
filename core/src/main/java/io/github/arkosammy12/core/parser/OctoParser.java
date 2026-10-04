@@ -7,6 +7,7 @@ import io.github.arkosammy12.core.lexer.SourceStream;
 import io.github.arkosammy12.core.parser.directive.DirectiveDefinition;
 import io.github.arkosammy12.core.parser.directive.LabelDefinition;
 import io.github.arkosammy12.core.token.*;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
@@ -15,6 +16,11 @@ public class OctoParser {
     public ParserResult parseTokens(SourceStream<Token> tokenStream) {
         ParserContext parserContext = new ParserContext(tokenStream);
         try {
+            // We start by assuming that we have to reserve the first two bytes for a jump to the 'main' label
+            JumpStatement jumpToMainStatement = new JumpStatement(parserContext.getHere(), new AddressArgument.NamedLabelReference("main"));
+            parserContext.addCodeElement(jumpToMainStatement);
+            parserContext.incrementHere(jumpToMainStatement);
+
             while (!parserContext.getTokenStream().isEmpty()) {
                 Optional<Token> optionalToken = parserContext.getTokenStream().poll();
                 if (optionalToken.isPresent()) {
@@ -33,7 +39,11 @@ public class OctoParser {
                     codeElements.forEach(parserContext::addCodeElement);
                 }
             }
-            return new ParserResult.Ok(List.copyOf(parserContext.getCodeElements()), parserContext.getLabelDefinitions(), parserContext.getAddressedLabelDefinitions());
+            if (parserContext.foundMainLabel()) {
+                return new ParserResult.Ok(parserContext.getCodeElements(), parserContext.getLabelDefinitions(), parserContext.getAddressedLabelDefinitions());
+            } else {
+                return new ParserResult.Error("This program is missing a 'main' label!");
+            }
         } catch (ParserException e) {
             return e.toErrorResult();
         }
@@ -533,7 +543,6 @@ public class OctoParser {
         return switch (directiveToken.getDirective()) {
             case LABEL_DEFINITION -> {
                 Token token = parserContext.pollTokenOrThrow("Expected label name following ':' directive!", directiveToken.getSourcePosition());
-                parserContext.checkReservedName(token);
                 parserContext.addDirectiveDefinition(token, new LabelDefinition(token.getLexeme(), parserContext.getHere()));
                 yield List.of();
             }
@@ -564,6 +573,7 @@ public class OctoParser {
         private final Map<Integer, Integer> addressedLabelDefinitions = new HashMap<>();
         private final Stack<Integer> loopStack = new Stack<>();
         private int here = 0x200;
+        private boolean foundMainLabel;
 
         private ParserContext(SourceStream<Token> tokenStream) {
             this.tokenStream = tokenStream;
@@ -599,6 +609,10 @@ public class OctoParser {
             return Map.copyOf(this.addressedLabelDefinitions);
         }
 
+        private boolean foundMainLabel() {
+            return this.foundMainLabel;
+        }
+
         private void addCodeElement(CodeElement codeElement) {
             this.codeElements.add(codeElement);
         }
@@ -608,31 +622,44 @@ public class OctoParser {
             if (this.directiveDefinitions.containsKey(name)) {
                 throw new ParserException("Directive name '%s' is already defined!".formatted(name), token.getSourcePosition());
             }
-            checkReservedName(token);
+            this.checkReservedName(token);
+            if (directiveDefinition instanceof LabelDefinition labelDefinition && "main".equals(labelDefinition.getName())) {
+                this.foundMainLabel = true;
+                if (labelDefinition.getAddress() == 0x202 || labelDefinition.getAddress() == 0x200) {
+                    this.here = 0x200;
+                    this.codeElements.clear();
+                    directiveDefinition = new LabelDefinition("main", 0x200);
+                }
+            }
             this.directiveDefinitions.put(name, directiveDefinition);
         }
 
         private void addAddressedLabelDefinition(int addressKey, int addressValue) {
-            if (this.addressedLabelDefinitions.containsKey(addressKey)) {
-                throw new IllegalArgumentException("Tried to insert internal label definition with key '%d' that is already mapped to '%d'!".formatted(addressKey, this.addressedLabelDefinitions.get(addressKey)));
+            if (this.addressedLabelDefinitions.containsKey(addressKey) && this.addressedLabelDefinitions.get(addressKey) != addressValue) {
+                throw new IllegalArgumentException("Tried to insert internal label definition with key '%d' because it is already mapped to '%d'!".formatted(addressKey, this.addressedLabelDefinitions.get(addressKey)));
             }
             this.addressedLabelDefinitions.put(addressKey, addressValue);
         }
 
-        private void incrementHere(Token token, CodePrimitive codePrimitive) throws ParserException {
-            this.incrementHere(token, codePrimitive.getSizeInBytes());
-        }
 
-        private int addToHere(Token token, int amount) throws ParserException {
+        private int addToHere(@Nullable Token token, int amount) throws ParserException {
             int newHere = this.here + amount;
             if (newHere > 0xFFFF) {
-                throw new ParserException("ROM size exceeds the 16-bit integer limit!", token.getSourcePosition());
+                throw new ParserException("ROM size exceeds the 16-bit integer limit!", token == null ? null : token.getSourcePosition());
             }
             return newHere;
         }
 
-        private void incrementHere(Token token, int amount) throws ParserException {
+        private void incrementHere(@Nullable Token token, int amount) throws ParserException {
             this.here = this.addToHere(token, amount);
+        }
+
+        private void incrementHere(@Nullable Token token, CodePrimitive codePrimitive) throws ParserException {
+            this.incrementHere(token, codePrimitive.getSizeInBytes());
+        }
+
+        private void incrementHere(CodePrimitive codePrimitive) throws ParserException {
+            this.incrementHere(null, codePrimitive);
         }
 
         private void pushLoop() {
@@ -717,11 +744,17 @@ public class OctoParser {
     private static class ParserException extends Exception {
 
         private final String error;
+
+        @Nullable
         private final SourcePosition sourcePosition;
 
-        private ParserException(String error, SourcePosition sourcePosition) {
+        private ParserException(String error, @Nullable SourcePosition sourcePosition) {
             this.error = error;
             this.sourcePosition = sourcePosition;
+        }
+
+        private ParserException(String error) {
+            this(error, null);
         }
 
         private ParserResult toErrorResult() {
