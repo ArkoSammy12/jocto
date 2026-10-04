@@ -45,6 +45,8 @@ public final class IntegerLiteralToken extends LiteralToken {
             if (check.startsWith("-")) {
                 negate = true;
                 check = check.substring(1);
+            } else if (check.startsWith("+")) {
+                check = check.substring(1);
             }
             int value;
             if (check.startsWith("0x")) {
