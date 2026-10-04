@@ -8,6 +8,6 @@ public sealed interface AddressArgument {
 
     record NamedLabelReference(String name) implements Unresolved {}
 
-    record AddressedLabelReference(int keyAddress) implements Unresolved {}
+    record InternalLabelReference(InternalLabelKey internalLabelKey) implements Unresolved {}
 
 }

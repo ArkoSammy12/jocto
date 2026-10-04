@@ -40,7 +40,7 @@ public class OctoParser {
                 }
             }
             if (parserContext.foundMainLabel()) {
-                return new ParserResult.Ok(parserContext.getCodeElements(), parserContext.getLabelDefinitions(), parserContext.getAddressedLabelDefinitions());
+                return new ParserResult.Ok(parserContext.getCodeElements(), parserContext.getLabelDefinitions(), parserContext.getInternalLabelDefinitions());
             } else {
                 return new ParserResult.Error("This program is missing a 'main' label!");
             }
@@ -114,7 +114,7 @@ public class OctoParser {
 
                 // HERE is pointing to the jump instruction that will jump to the end if the if-begin block or to the
                 // else case of the if-else block
-                JumpStatement jumpAboveIfBlockStatement = new JumpStatement(parserContext.getHere(), new AddressArgument.AddressedLabelReference(parserContext.getHere()));
+                JumpStatement jumpAboveIfBlockStatement = new JumpStatement(parserContext.getHere(), new AddressArgument.InternalLabelReference(new InternalLabelKey(parserContext.getHere(), ifBlockBeginningToken.getSourcePosition())));
                 parserContext.incrementHere(ifBlockBeginningToken, jumpAboveIfBlockStatement);
 
                 // HERE now points to the first instruction of the if block within the if-begin or if-else block
@@ -132,7 +132,7 @@ public class OctoParser {
                                 case ELSE -> {
                                     // HERE is pointing to the jump instruction at the end of the if block,
                                     // that jumps to after the else block
-                                    jumpAboveElseBlockStatement = new JumpStatement(parserContext.getHere(), new AddressArgument.AddressedLabelReference(parserContext.getHere()));
+                                    jumpAboveElseBlockStatement = new JumpStatement(parserContext.getHere(), new AddressArgument.InternalLabelReference(new InternalLabelKey(parserContext.getHere(), ifBlockBeginningToken.getSourcePosition())));
                                     parserContext.incrementHere(token, jumpAboveElseBlockStatement);
 
                                     // HERE now points to the first instruction of the else block
@@ -180,27 +180,27 @@ public class OctoParser {
     private Collection<CodePrimitive> parseLoopBlockKeywordToken(ParserContext parserContext, LoopBlockKeywordToken loopBlockKeywordToken) throws ParserException {
         return switch (loopBlockKeywordToken.getLoopBlockKeyword()) {
             case LOOP -> {
-                parserContext.pushLoop();
+                parserContext.pushLoop(loopBlockKeywordToken.getSourcePosition());
                 yield List.of();
             }
             case AGAIN -> {
-                OptionalInt optionalLoopAddress = parserContext.popLoop();
-                if (optionalLoopAddress.isEmpty()) {
+                Optional<InternalLabelKey>  optionalLoopKey = parserContext.popLoop();
+                if (optionalLoopKey.isEmpty()) {
                     throw new ParserException("This 'again' does not have a matching 'loop'!", loopBlockKeywordToken.getSourcePosition());
                 } else {
-                    int loopAddress = optionalLoopAddress.getAsInt();
-                    JumpStatement jumpToLoopBeginningStatement = new JumpStatement(parserContext.getHere(), new AddressArgument.Resolved(loopAddress));
-                    parserContext.addAddressedLabelDefinition(loopAddress, parserContext.addToHere(loopBlockKeywordToken, jumpToLoopBeginningStatement.getSizeInBytes()));
+                    InternalLabelKey loopKey = optionalLoopKey.get();
+                    JumpStatement jumpToLoopBeginningStatement = new JumpStatement(parserContext.getHere(), new AddressArgument.Resolved(loopKey.addressKey()));
+                    parserContext.addInternalLabelDefinition(loopKey, parserContext.addToHere(loopBlockKeywordToken, jumpToLoopBeginningStatement.getSizeInBytes()));
                     yield List.of(jumpToLoopBeginningStatement);
                 }
             }
             case WHILE -> {
-                OptionalInt loopAddress = parserContext.peekLoop();
-                if (loopAddress.isEmpty()) {
+                Optional<InternalLabelKey> loopKey = parserContext.peekLoop();
+                if (loopKey.isEmpty()) {
                     throw new ParserException("This 'while' is not within a 'loop'!", loopBlockKeywordToken.getSourcePosition());
                 } else {
                     Collection<CodePrimitive> conditionalExpressionOpcodes = this.invertSkips(this.parseConditionalExpression(parserContext, loopBlockKeywordToken));
-                    JumpStatement jumpToLoopEndStatement = new JumpStatement(parserContext.addToHere(loopBlockKeywordToken, conditionalExpressionOpcodes.stream().map(CodePrimitive::getSizeInBytes).reduce(Integer::sum).orElse(0)), new AddressArgument.AddressedLabelReference(loopAddress.getAsInt()));
+                    JumpStatement jumpToLoopEndStatement = new JumpStatement(parserContext.addToHere(loopBlockKeywordToken, conditionalExpressionOpcodes.stream().map(CodePrimitive::getSizeInBytes).reduce(Integer::sum).orElse(0)), new AddressArgument.InternalLabelReference(loopKey.get()));
                     List<CodePrimitive> codeElements = new ArrayList<>(conditionalExpressionOpcodes);
                     codeElements.add(jumpToLoopEndStatement);
                     yield List.copyOf(codeElements);
@@ -566,12 +566,11 @@ public class OctoParser {
 
     private static class ParserContext {
 
-
         private final SourceStream<Token> tokenStream;
         private final List<CodeElement> codeElements = new ArrayList<>();
         private final Map<String, DirectiveDefinition> directiveDefinitions = new HashMap<>();
-        private final Map<Integer, Integer> addressedLabelDefinitions = new HashMap<>();
-        private final Stack<Integer> loopStack = new Stack<>();
+        private final Map<InternalLabelKey, Integer> internalLabelDefinitions = new HashMap<>();
+        private final Stack<InternalLabelKey> loopStack = new Stack<>();
         private int here = 0x200;
         private boolean foundMainLabel;
 
@@ -605,8 +604,8 @@ public class OctoParser {
             return Map.copyOf(labelDefinitions);
         }
 
-        private Map<Integer, Integer> getAddressedLabelDefinitions() {
-            return Map.copyOf(this.addressedLabelDefinitions);
+        private Map<InternalLabelKey, Integer> getInternalLabelDefinitions() {
+            return Map.copyOf(this.internalLabelDefinitions);
         }
 
         private boolean foundMainLabel() {
@@ -634,11 +633,11 @@ public class OctoParser {
             this.directiveDefinitions.put(name, directiveDefinition);
         }
 
-        private void addAddressedLabelDefinition(int addressKey, int addressValue) {
-            if (this.addressedLabelDefinitions.containsKey(addressKey) && this.addressedLabelDefinitions.get(addressKey) != addressValue) {
-                throw new IllegalArgumentException("Tried to insert internal label definition with key '%d' because it is already mapped to '%d'!".formatted(addressKey, this.addressedLabelDefinitions.get(addressKey)));
+        private void addInternalLabelDefinition(InternalLabelKey internalLabelKey, int addressValue) {
+            if (this.internalLabelDefinitions.containsKey(internalLabelKey) && this.internalLabelDefinitions.get(internalLabelKey) != addressValue) {
+                throw new IllegalArgumentException("Tried to insert internal label definition with key '%s' because it is already mapped to '%d'!".formatted(internalLabelKey, this.internalLabelDefinitions.get(internalLabelKey)));
             }
-            this.addressedLabelDefinitions.put(addressKey, addressValue);
+            this.internalLabelDefinitions.put(internalLabelKey, addressValue);
         }
 
 
@@ -662,16 +661,16 @@ public class OctoParser {
             this.incrementHere(null, codePrimitive);
         }
 
-        private void pushLoop() {
-            this.loopStack.push(this.here);
+        private void pushLoop(SourcePosition sourcePositionKey) {
+            this.loopStack.push(new InternalLabelKey(this.here, sourcePositionKey));
         }
 
-        private OptionalInt peekLoop() {
-            return this.loopStack.isEmpty() ? OptionalInt.empty() : OptionalInt.of(this.loopStack.peek());
+        private Optional<InternalLabelKey> peekLoop() {
+            return this.loopStack.isEmpty() ? Optional.empty() : Optional.of(this.loopStack.peek());
         }
 
-        private OptionalInt popLoop() {
-            return this.loopStack.isEmpty() ? OptionalInt.empty() : OptionalInt.of(this.loopStack.pop());
+        private Optional<InternalLabelKey>  popLoop() {
+            return this.loopStack.isEmpty() ? Optional.empty() : Optional.of(this.loopStack.pop());
         }
 
         private Optional<Token> pollToken() {

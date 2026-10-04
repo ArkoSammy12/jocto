@@ -2,6 +2,7 @@ package io.github.arkosammy12.cli;
 
 import io.github.arkosammy12.core.codegen.CodeElement;
 import io.github.arkosammy12.core.lexer.*;
+import io.github.arkosammy12.core.parser.InternalLabelKey;
 import io.github.arkosammy12.core.parser.OctoParser;
 import io.github.arkosammy12.core.parser.ParserResult;
 import io.github.arkosammy12.core.parser.directive.LabelDefinition;
@@ -16,7 +17,10 @@ public class Main {
     static void main(String[] args) {
         String test = """
                 : main
-                v1 := v2
+                    loop
+                        loop
+                        again
+                    again
                 """;
 
         SourceFile sourceFile = new SourceFile(List.of(test.split("\n")));
@@ -28,7 +32,7 @@ public class Main {
                 OctoParser octoParser = new OctoParser();
                 ParserResult parserResult = octoParser.parseTokens(tokenStream);
                 switch (parserResult) {
-                    case ParserResult.Ok(Collection<CodeElement> codeElements, Map<String, LabelDefinition> labelDefinitions, Map<Integer, Integer> addressedLabelDefinitions) -> {
+                    case ParserResult.Ok(Collection<CodeElement> codeElements, Map<String, LabelDefinition> labelDefinitions, Map<InternalLabelKey, Integer> internalLabelDefinitions) -> {
                         for (CodeElement codeElement : codeElements) {
                             IO.println(codeElement);
                         }

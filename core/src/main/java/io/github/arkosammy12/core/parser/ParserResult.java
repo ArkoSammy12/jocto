@@ -11,7 +11,7 @@ import java.util.Optional;
 
 public sealed interface ParserResult {
 
-    record Ok(Collection<CodeElement> codeElements, Map<String, LabelDefinition> labelDefinitions, Map<Integer, Integer> addressedLabelDefinitions) implements ParserResult {}
+    record Ok(Collection<CodeElement> codeElements, Map<String, LabelDefinition> labelDefinitions, Map<InternalLabelKey, Integer> internalLabelDefinitions) implements ParserResult {}
 
     final class Error implements ParserResult {
 
