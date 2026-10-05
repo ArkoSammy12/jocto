@@ -626,8 +626,8 @@ public class OctoParser {
         }
 
         private void addCodeElement(CodeElement codeElement) throws OctoAssemblerException {
-            if (codeElement instanceof LabelableElement labelableElement && labelableElement.getAddressArgument() instanceof AddressArgument.NamedLabelReference namedLabelReference) {
-                this.checkReservedName(namedLabelReference.token());
+            if (codeElement instanceof LabelableElement labelableElement && labelableElement.getAddressArgument() instanceof AddressArgument.NamedLabelReference(Token token)) {
+                this.checkReservedName(token);
             }
             this.codeElements.add(codeElement);
         }
