@@ -314,11 +314,6 @@ public class OctoParser {
     }
 
     private Collection<CodePrimitive> parseToken(ParserContext parserContext, Token token) throws OctoAssemblerException {
-        SourcePosition sourcePosition = token.getSourcePosition();
-        if (sourcePosition.row() == 25 && sourcePosition.column() == 11) {
-            int a = 1;
-        }
-
         return switch (token) {
             case DirectiveToken directiveToken -> this.parseDirective(parserContext, directiveToken);
             case InstructionStatementNameToken instructionStatementNameToken -> this.parseInstructionStatementNameToken(parserContext, instructionStatementNameToken);
