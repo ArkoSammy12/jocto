@@ -1,11 +1,14 @@
 package io.github.arkosammy12.core.parser;
 
-import io.github.arkosammy12.core.codegen.*;
+import io.github.arkosammy12.core.elements.*;
+import io.github.arkosammy12.core.result.OctoAssemblerException;
 import io.github.arkosammy12.core.grammar.IfBlockKeywordLexeme;
 import io.github.arkosammy12.core.lexer.SourcePosition;
 import io.github.arkosammy12.core.lexer.SourceStream;
 import io.github.arkosammy12.core.parser.directive.DirectiveDefinition;
+import io.github.arkosammy12.core.parser.directive.ExpandableDirective;
 import io.github.arkosammy12.core.parser.directive.LabelDefinition;
+import io.github.arkosammy12.core.result.OctoParserResult;
 import io.github.arkosammy12.core.token.*;
 import org.jetbrains.annotations.Nullable;
 
@@ -13,12 +16,20 @@ import java.util.*;
 
 public class OctoParser {
 
-    public ParserResult parseTokens(SourceStream<Token> tokenStream) {
+    private final int programStart;
+
+    public OctoParser(int programStart) {
+        if (programStart < 0) {
+            throw new IllegalArgumentException("The program start value cannot be less than zero!");
+        }
+        this.programStart = programStart;
+    }
+
+    public OctoParserResult parseTokens(SourceStream<Token> tokenStream) {
         ParserContext parserContext = new ParserContext(tokenStream);
         try {
             // We start by assuming that we have to reserve the first two bytes for a jump to the 'main' label
-            JumpStatement jumpToMainStatement = new JumpStatement(parserContext.getHere(), new AddressArgument.NamedLabelReference("main"));
-            parserContext.addCodeElement(jumpToMainStatement);
+            JumpStatement jumpToMainStatement = new JumpStatement(parserContext.getHere(), new AddressArgument.NamedLabelReference(new IdentifierToken("main", new SourcePosition(0, 0))));
             parserContext.incrementHere(jumpToMainStatement);
 
             while (!parserContext.getTokenStream().isEmpty()) {
@@ -36,20 +47,22 @@ public class OctoParser {
                         }
                         default -> this.parseTopLevel(parserContext, token);
                     };
-                    codeElements.forEach(parserContext::addCodeElement);
+                    for (CodeElement codeElement : codeElements) {
+                        parserContext.addCodeElement(codeElement);
+                    }
                 }
             }
             if (parserContext.foundMainLabel()) {
-                return new ParserResult.Ok(parserContext.getCodeElements(), parserContext.getLabelDefinitions(), parserContext.getInternalLabelDefinitions());
+                return new OctoParserResult.Ok(parserContext.getCodeElements(), parserContext.getLabelDefinitions(), parserContext.getInternalLabelDefinitions());
             } else {
-                return new ParserResult.Error("This program is missing a 'main' label!");
+                return new OctoParserResult.Error("This program is missing a 'main' label!");
             }
-        } catch (ParserException e) {
-            return e.toErrorResult();
+        } catch (OctoAssemblerException e) {
+            return e.toParserResult();
         }
     }
 
-    private Collection<? extends CodeElement> parseTopLevel(ParserContext parserContext, Token token) throws ParserException {
+    private Collection<? extends CodeElement> parseTopLevel(ParserContext parserContext, Token token) throws OctoAssemblerException {
         Collection<CodePrimitive> codePrimitives = this.parseToken(parserContext, token);
         for (CodePrimitive codePrimitive : codePrimitives) {
             parserContext.incrementHere(token, codePrimitive);
@@ -57,9 +70,9 @@ public class OctoParser {
         return codePrimitives;
     }
 
-    private Collection<CodeElement> parseIfBlockKeywordToken(ParserContext parserContext, IfBlockKeywordToken ifBlockKeywordToken) throws ParserException {
+    private Collection<CodeElement> parseIfBlockKeywordToken(ParserContext parserContext, IfBlockKeywordToken ifBlockKeywordToken) throws OctoAssemblerException {
         if (ifBlockKeywordToken.getIfBlockKeywordLexeme() != IfBlockKeywordLexeme.IF) {
-            throw new ParserException("Unmatched '%s' if block keyword!".formatted(ifBlockKeywordToken.getIfBlockKeywordLexeme()), ifBlockKeywordToken.getSourcePosition());
+            throw new OctoAssemblerException("Unmatched '%s' if block keyword!".formatted(ifBlockKeywordToken.getIfBlockKeywordLexeme()), ifBlockKeywordToken.getSourcePosition());
         }
         // HERE is pointing to the first opcode of the conditional expression
         Collection<CodePrimitive> conditionalExpressionOpcodes = this.parseConditionalExpression(parserContext, ifBlockKeywordToken);
@@ -171,13 +184,13 @@ public class OctoParser {
                         }
                     }
                 }
-                throw new ParserException("Unterminated if block!", ifBlockKeywordToken.getSourcePosition());
+                throw new OctoAssemblerException("Unterminated if block!", ifBlockKeywordToken.getSourcePosition());
             }
-            default -> throw new ParserException("Unexpected if block beginning!", ifBlockKeywordToken.getSourcePosition());
+            default -> throw new OctoAssemblerException("Unexpected if block beginning!", ifBlockKeywordToken.getSourcePosition());
         };
     }
 
-    private Collection<CodePrimitive> parseLoopBlockKeywordToken(ParserContext parserContext, LoopBlockKeywordToken loopBlockKeywordToken) throws ParserException {
+    private Collection<CodePrimitive> parseLoopBlockKeywordToken(ParserContext parserContext, LoopBlockKeywordToken loopBlockKeywordToken) throws OctoAssemblerException {
         return switch (loopBlockKeywordToken.getLoopBlockKeyword()) {
             case LOOP -> {
                 parserContext.pushLoop(loopBlockKeywordToken.getSourcePosition());
@@ -186,7 +199,7 @@ public class OctoParser {
             case AGAIN -> {
                 Optional<InternalLabelKey>  optionalLoopKey = parserContext.popLoop();
                 if (optionalLoopKey.isEmpty()) {
-                    throw new ParserException("This 'again' does not have a matching 'loop'!", loopBlockKeywordToken.getSourcePosition());
+                    throw new OctoAssemblerException("This 'again' does not have a matching 'loop'!", loopBlockKeywordToken.getSourcePosition());
                 } else {
                     InternalLabelKey loopKey = optionalLoopKey.get();
                     JumpStatement jumpToLoopBeginningStatement = new JumpStatement(parserContext.getHere(), new AddressArgument.Resolved(loopKey.addressKey()));
@@ -197,7 +210,7 @@ public class OctoParser {
             case WHILE -> {
                 Optional<InternalLabelKey> loopKey = parserContext.peekLoop();
                 if (loopKey.isEmpty()) {
-                    throw new ParserException("This 'while' is not within a 'loop'!", loopBlockKeywordToken.getSourcePosition());
+                    throw new OctoAssemblerException("This 'while' is not within a 'loop'!", loopBlockKeywordToken.getSourcePosition());
                 } else {
                     Collection<CodePrimitive> conditionalExpressionOpcodes = this.invertSkips(this.parseConditionalExpression(parserContext, loopBlockKeywordToken));
                     JumpStatement jumpToLoopEndStatement = new JumpStatement(parserContext.addToHere(loopBlockKeywordToken, conditionalExpressionOpcodes.stream().map(CodePrimitive::getSizeInBytes).reduce(Integer::sum).orElse(0)), new AddressArgument.InternalLabelReference(loopKey.get()));
@@ -221,7 +234,7 @@ public class OctoParser {
         return List.copyOf(invertedSkips);
     }
 
-    private Collection<CodePrimitive> parseConditionalExpression(ParserContext parserContext, Token token) throws ParserException {
+    private Collection<CodePrimitive> parseConditionalExpression(ParserContext parserContext, Token token) throws OctoAssemblerException {
         RegisterLiteralToken vx = parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected vx in conditional expression!", token.getSourcePosition());
         ConditionalOperatorToken conditionalOperatorToken = parserContext.pollTokenOrThrow(ConditionalOperatorToken.class, "Expected conditional operator in conditional statement!", vx.getSourcePosition());
         ConditionalOperation conditionalOperation = conditionalOperatorToken.getConditionalOperation();
@@ -262,7 +275,7 @@ public class OctoParser {
                     };
                     case IntegerLiteralToken nn -> {
                         if (!nn.is8Bits()) {
-                            throw new ParserException("Conditional argument '%d' does not fit in 8 bits [-128, 255]".formatted(nn.getValue()), nn.getSourcePosition());
+                            throw new OctoAssemblerException("Conditional argument '%d' does not fit in 8 bits [-128, 255]".formatted(nn.getValue()), nn.getSourcePosition());
                         }
                         yield switch (conditionalOperation) {
                             case EQUALITY -> List.of(new SkipIfRegisterNotEqualsConstant(parserContext.getHere(), vx.getRegisterIndex(), nn.getValue()));
@@ -294,13 +307,18 @@ public class OctoParser {
                             default -> throw new IllegalStateException("Unexpected value: " + conditionalOperation);
                         };
                     }
-                    case Token t -> throw new ParserException("Invalid conditional expression argument '%s'!".formatted(t.getLexeme()), t.getSourcePosition());
+                    case Token t -> throw new OctoAssemblerException("Invalid conditional expression argument '%s'!".formatted(t.getLexeme()), t.getSourcePosition());
                 };
             }
         };
     }
 
-    private Collection<CodePrimitive> parseToken(ParserContext parserContext, Token token) throws ParserException  {
+    private Collection<CodePrimitive> parseToken(ParserContext parserContext, Token token) throws OctoAssemblerException {
+        SourcePosition sourcePosition = token.getSourcePosition();
+        if (sourcePosition.row() == 25 && sourcePosition.column() == 11) {
+            int a = 1;
+        }
+
         return switch (token) {
             case DirectiveToken directiveToken -> this.parseDirective(parserContext, directiveToken);
             case InstructionStatementNameToken instructionStatementNameToken -> this.parseInstructionStatementNameToken(parserContext, instructionStatementNameToken);
@@ -311,12 +329,12 @@ public class OctoParser {
         };
     }
 
-    private Collection<CodePrimitive> parseInstructionStatementNameToken(ParserContext parserContext, InstructionStatementNameToken instructionStatementNameToken) throws ParserException {
+    private Collection<CodePrimitive> parseInstructionStatementNameToken(ParserContext parserContext, InstructionStatementNameToken instructionStatementNameToken) throws OctoAssemblerException {
         return switch (instructionStatementNameToken) {
             case SemicolonToken _ -> List.of(new ReturnStatement(parserContext.getHere()));
             case NonSymbolInstructionStatementKeywordToken nonSymbolInstructionStatementKeywordToken -> switch (nonSymbolInstructionStatementKeywordToken.getInstructionStatementKeyword()) {
                 case RETURN -> List.of(new ReturnStatement(parserContext.getHere()));
-                case CLEAR -> List.of(new ClearStatement(parserContext.getHere()));
+                case CLEAR -> List.of(new ClearScreenStatement(parserContext.getHere()));
                 case BCD -> List.of(new BCDStatement(parserContext.getHere(), parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected register literal after bcd statement!", instructionStatementNameToken.getSourcePosition()).getRegisterIndex()));
                 case SAVE -> {
                     RegisterLiteralToken vx = parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected register literal after save statement!", instructionStatementNameToken.getSourcePosition());
@@ -341,7 +359,7 @@ public class OctoParser {
                     RegisterLiteralToken vy = parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected 'vy' argument after 'vx' argument in sprite statement!", instructionStatementNameToken.getSourcePosition());
                     IntegerLiteralToken n = parserContext.pollTokenOrThrow(IntegerLiteralToken.class, "Expected integer literal after 'vy' argument in sprite statement!", instructionStatementNameToken.getSourcePosition());
                     if (!n.isUnsigned4Bits()) {
-                        throw new ParserException("Sprite statement argument %d for 'n' does not fit is not in the range [0, 15]".formatted(n.getValue()), instructionStatementNameToken.getSourcePosition());
+                        throw new OctoAssemblerException("Sprite statement argument %d for 'n' does not fit is not in the range [0, 15]".formatted(n.getValue()), instructionStatementNameToken.getSourcePosition());
                     }
                     yield List.of(new SpriteStatement(parserContext.getHere(), vx.getRegisterIndex(), vy.getRegisterIndex(), n.getValue()));
                 }
@@ -349,22 +367,22 @@ public class OctoParser {
                     Token token = parserContext.pollTokenOrThrow("Expected integer or label argument after jump statement!", instructionStatementNameToken.getSourcePosition());
                     if (token instanceof IntegerLiteralToken n) {
                         if (!n.isUnsigned12Bits()) {
-                            throw new ParserException("Jump statement target %d does not fit in 12 bits!".formatted(n.getValue()), instructionStatementNameToken.getSourcePosition());
+                            throw new OctoAssemblerException("Jump statement target %d does not fit in 12 bits!".formatted(n.getValue()), instructionStatementNameToken.getSourcePosition());
                         }
                         yield List.of(new JumpStatement(parserContext.getHere(), new AddressArgument.Resolved(n.getValue())));
                     } else {
-                        yield List.of(new JumpStatement(parserContext.getHere(), new AddressArgument.NamedLabelReference(token.getLexeme())));
+                        yield List.of(new JumpStatement(parserContext.getHere(), new AddressArgument.NamedLabelReference(token)));
                     }
                 }
                 case JUMP0 -> {
                     Token token = parserContext.pollTokenOrThrow("Expected integer or label argument after jump0 statement!", instructionStatementNameToken.getSourcePosition());
                     if (token instanceof IntegerLiteralToken n) {
                         if (!n.isUnsigned12Bits()) {
-                            throw new ParserException("Jump0 statement target %d does not fit in 12 bits!".formatted(n.getValue()), instructionStatementNameToken.getSourcePosition());
+                            throw new OctoAssemblerException("Jump0 statement target %d does not fit in 12 bits!".formatted(n.getValue()), instructionStatementNameToken.getSourcePosition());
                         }
                         yield List.of(new JumpZeroStatement(parserContext.getHere(), new AddressArgument.Resolved(n.getValue())));
                     } else {
-                        yield List.of(new JumpZeroStatement(parserContext.getHere(), new AddressArgument.NamedLabelReference(token.getLexeme())));
+                        yield List.of(new JumpZeroStatement(parserContext.getHere(), new AddressArgument.NamedLabelReference(token)));
                     }
                 }
                 case HIRES -> List.of(new HiresStatement(parserContext.getHere()));
@@ -372,7 +390,7 @@ public class OctoParser {
                 case SCROLL_DOWN -> {
                     IntegerLiteralToken n = parserContext.pollTokenOrThrow(IntegerLiteralToken.class, "Expected integer literal after 'vy' argument in scroll-down statement!", instructionStatementNameToken.getSourcePosition());
                     if (!n.isUnsigned4Bits()) {
-                        throw new ParserException("Scroll down statement argument %d for 'n' does not fit is not in the range [0, 15]".formatted(n.getValue()), instructionStatementNameToken.getSourcePosition());
+                        throw new OctoAssemblerException("Scroll down statement argument %d for 'n' does not fit is not in the range [0, 15]".formatted(n.getValue()), instructionStatementNameToken.getSourcePosition());
                     }
                     yield List.of(new ScrollDownStatement(parserContext.getHere(), n.getValue()));
                 }
@@ -384,7 +402,7 @@ public class OctoParser {
                 case PLANE -> {
                     IntegerLiteralToken n = parserContext.pollTokenOrThrow(IntegerLiteralToken.class, "Expected integer literal after 'vy' argument in plane statement!", instructionStatementNameToken.getSourcePosition());
                     if (!n.isUnsigned4Bits()) {
-                        throw new ParserException("Plane statement argument %d for 'n' does not fit is not in the range [0, 15]".formatted(n.getValue()), instructionStatementNameToken.getSourcePosition());
+                        throw new OctoAssemblerException("Plane statement argument %d for 'n' does not fit is not in the range [0, 15]".formatted(n.getValue()), instructionStatementNameToken.getSourcePosition());
                     }
                     yield List.of(new PlaneStatement(parserContext.getHere(), n.getValue()));
                 }
@@ -394,13 +412,13 @@ public class OctoParser {
                     if (assignmentOperatorToken.getAssignmentOperation() == AssignmentOperation.SET) {
                         yield List.of(new SetPitchAssignment(parserContext.getHere(), parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected register literal as pitch statement argument!", instructionStatementNameToken.getSourcePosition()).getRegisterIndex()));
                     } else {
-                        throw new ParserException("Unexpected operator '%s' after pitch statement".formatted(assignmentOperatorToken.getLexeme()), instructionStatementNameToken.getSourcePosition());
+                        throw new OctoAssemblerException("Unexpected operator '%s' after pitch statement".formatted(assignmentOperatorToken.getLexeme()), instructionStatementNameToken.getSourcePosition());
                     }
                 }
                 case SCROLL_UP -> {
                     IntegerLiteralToken n = parserContext.pollTokenOrThrow(IntegerLiteralToken.class, "Expected integer literal after 'vy' argument in scroll-up statement!", instructionStatementNameToken.getSourcePosition());
                     if (!n.isUnsigned4Bits()) {
-                        throw new ParserException("Scroll up statement argument %d for 'n' does not fit is not in the range [0, 15]".formatted(n.getValue()), instructionStatementNameToken.getSourcePosition());
+                        throw new OctoAssemblerException("Scroll up statement argument %d for 'n' does not fit is not in the range [0, 15]".formatted(n.getValue()), instructionStatementNameToken.getSourcePosition());
                     }
                     yield List.of(new ScrollUpStatement(parserContext.getHere(), n.getValue()));
                 }
@@ -408,12 +426,12 @@ public class OctoParser {
         };
     }
     
-    private Collection<CodePrimitive> parseLiteral(ParserContext parserContext, LiteralToken literalToken) throws ParserException {
+    private Collection<CodePrimitive> parseLiteral(ParserContext parserContext, LiteralToken literalToken) throws OctoAssemblerException {
         return switch (literalToken) {
             case RegisterLiteralToken registerLiteralToken -> this.parseRegisterLiteral(parserContext, registerLiteralToken);
             case IntegerLiteralToken integerLiteralToken -> {
                 if (!integerLiteralToken.is8Bits()) {
-                    throw new ParserException("Raw integer literal '%d' does not fit in 8 bits [-128, 255]".formatted(integerLiteralToken.getValue()), integerLiteralToken.getSourcePosition());
+                    throw new OctoAssemblerException("Raw integer literal '%d' does not fit in 8 bits [-128, 255]".formatted(integerLiteralToken.getValue()), integerLiteralToken.getSourcePosition());
                 }
                 yield List.of(new ByteLiteral(parserContext.getHere(), integerLiteralToken.getValue()));
             }
@@ -422,23 +440,23 @@ public class OctoParser {
         };
     }
 
-    private Collection<CodePrimitive> parseAssignmentKeywordToken(ParserContext parserContext, AssignmentKeywordToken assignmentKeywordToken) throws ParserException {
+    private Collection<CodePrimitive> parseAssignmentKeywordToken(ParserContext parserContext, AssignmentKeywordToken assignmentKeywordToken) throws OctoAssemblerException {
         return (switch (assignmentKeywordToken.getAssignmentKeyword()) {
             case DELAY -> {
                 if (parserContext.pollTokenOrThrow(AssignmentOperatorToken.class, "Expected assignment operator ':=' after delay statement!", assignmentKeywordToken.getSourcePosition()).getAssignmentOperation() != AssignmentOperation.SET) {
-                    throw new ParserException("Expected assignment operator ':=' after delay statement!", assignmentKeywordToken.getSourcePosition());
+                    throw new OctoAssemblerException("Expected assignment operator ':=' after delay statement!", assignmentKeywordToken.getSourcePosition());
                 }
                 yield List.of(new SetDelayTimerAssignment(parserContext.getHere(), parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected 'vx' argument after delay statement!", assignmentKeywordToken.getSourcePosition()).getRegisterIndex()));
             }
             case BUZZER -> {
                 if (parserContext.pollTokenOrThrow(AssignmentOperatorToken.class, "Expected assignment operator ':=' after buzzer statement!", assignmentKeywordToken.getSourcePosition()).getAssignmentOperation() != AssignmentOperation.SET) {
-                    throw new ParserException("Expected assignment operator ':=' after buzzer statement!", assignmentKeywordToken.getSourcePosition());
+                    throw new OctoAssemblerException("Expected assignment operator ':=' after buzzer statement!", assignmentKeywordToken.getSourcePosition());
                 }
                 yield List.of(new SetBuzzerTimerAssignment(parserContext.getHere(), parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected 'vx' argument after delay statement!", assignmentKeywordToken.getSourcePosition()).getRegisterIndex()));
             }
             case PITCH -> {
                 if (parserContext.pollTokenOrThrow(AssignmentOperatorToken.class, "Expected assignment operator ':=' after pitch statement!", assignmentKeywordToken.getSourcePosition()).getAssignmentOperation() != AssignmentOperation.SET) {
-                    throw new ParserException("Expected assignment operator ':=' after pitch statement!", assignmentKeywordToken.getSourcePosition());
+                    throw new OctoAssemblerException("Expected assignment operator ':=' after pitch statement!", assignmentKeywordToken.getSourcePosition());
                 }
                 yield List.of(new SetPitchAssignment(parserContext.getHere(), parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected 'vx' argument after delay statement!", assignmentKeywordToken.getSourcePosition()).getRegisterIndex()));
             }
@@ -446,7 +464,7 @@ public class OctoParser {
         });
     }
     
-    private Collection<CodePrimitive> parseRegisterLiteral(ParserContext parserContext, RegisterLiteralToken vx) throws ParserException {
+    private Collection<CodePrimitive> parseRegisterLiteral(ParserContext parserContext, RegisterLiteralToken vx) throws OctoAssemblerException {
         return switch (parserContext.pollTokenOrThrow(AssignmentOperatorToken.class, "Unknown operator on register assignment statement!", vx.getSourcePosition()).getAssignmentOperation()) {
             case BITWISE_OR -> List.of(new BitwiseOrRegisterAssignment(parserContext.getHere(), vx.getRegisterIndex(), parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected vy argument after 'vx |=' assignment!", vx.getSourcePosition()).getRegisterIndex()));
             case BITWISE_AND -> List.of(new BitwiseAndRegisterAssignment(parserContext.getHere(), vx.getRegisterIndex(), parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected vy argument after 'vx &=' assignment!", vx.getSourcePosition()).getRegisterIndex()));
@@ -460,10 +478,10 @@ public class OctoParser {
                     if (n.is8Bits()) {
                         yield List.of(new AddConstantToRegisterAssignment(parserContext.getHere(), vx.getRegisterIndex(), n.getValue()));
                     } else {
-                        throw new ParserException("Argument '%d' for 'vx +=' does not fit in a byte!".formatted(n.getValue()), n.getSourcePosition());
+                        throw new OctoAssemblerException("Argument '%d' for 'vx +=' does not fit in a byte!".formatted(n.getValue()), n.getSourcePosition());
                     }
                 }
-                case Token token -> throw new ParserException("Unexpected argument '%s' for 'vx +=' statement".formatted(token.getLexeme()), token.getSourcePosition());
+                case Token token -> throw new OctoAssemblerException("Unexpected argument '%s' for 'vx +=' statement".formatted(token.getLexeme()), token.getSourcePosition());
             };
             case LEFT_SUBTRACT -> switch (parserContext.pollTokenOrThrow("Unterminated 'vx -= ' statement!", vx.getSourcePosition())) {
                 case RegisterLiteralToken vy -> List.of(new LeftSubtractRegisterFromRegisterAssignment(parserContext.getHere(), vx.getRegisterIndex(), vy.getRegisterIndex()));
@@ -471,10 +489,10 @@ public class OctoParser {
                     if (n.is8Bits()) {
                         yield List.of(new AddConstantToRegisterAssignment(parserContext.getHere(), vx.getRegisterIndex(), -n.getValue()));
                     } else {
-                        throw new ParserException("Argument '%d' for 'vx -=' does not fit in a byte!".formatted(n.getValue()), n.getSourcePosition());
+                        throw new OctoAssemblerException("Argument '%d' for 'vx -=' does not fit in a byte!".formatted(n.getValue()), n.getSourcePosition());
                     }
                 }
-                case Token token -> throw new ParserException("Unexpected argument '%s' for 'vx -=' statement".formatted(token.getLexeme()), token.getSourcePosition());
+                case Token token -> throw new OctoAssemblerException("Unexpected argument '%s' for 'vx -=' statement".formatted(token.getLexeme()), token.getSourcePosition());
             };
             case SET -> switch (parserContext.pollTokenOrThrow("Unterminated 'vx := ' statement!", vx.getSourcePosition())) {
                 case RegisterLiteralToken vy -> List.of(new SetRegisterToRegisterAssignment(parserContext.getHere(), vx.getRegisterIndex(), vy.getRegisterIndex()));
@@ -482,7 +500,7 @@ public class OctoParser {
                     if (n.is8Bits()) {
                         yield List.of(new SetRegisterToConstantAssignment(parserContext.getHere(), vx.getRegisterIndex(), n.getValue()));
                     } else {
-                        throw new ParserException("Argument '%d' for 'vx :=' does not fit in a byte!".formatted(n.getValue()), n.getSourcePosition());
+                        throw new OctoAssemblerException("Argument '%d' for 'vx :=' does not fit in a byte!".formatted(n.getValue()), n.getSourcePosition());
                     }
                 }
                 case AssignmentKeywordToken assignmentKeywordToken -> switch (assignmentKeywordToken.getAssignmentKeyword()) {
@@ -493,23 +511,23 @@ public class OctoParser {
                         if (nn.is8Bits()) {
                             yield List.of(new SetRegisterToRandomAssignment(parserContext.getHere(), vx.getRegisterIndex(), nn.getValue()));
                         } else {
-                            throw new ParserException("Argument '%d' for 'vx := random' does not fit in a byte!".formatted(nn.getValue()), nn.getSourcePosition());
+                            throw new OctoAssemblerException("Argument '%d' for 'vx := random' does not fit in a byte!".formatted(nn.getValue()), nn.getSourcePosition());
                         }
                     }
                     default -> parserContext.checkReservedName(assignmentKeywordToken);
                 };
-                case Token token -> throw new ParserException("Unexpected argument '%s' for 'vx :=' statement".formatted(token.getLexeme()), token.getSourcePosition());
+                case Token token -> throw new OctoAssemblerException("Unexpected argument '%s' for 'vx :=' statement".formatted(token.getLexeme()), token.getSourcePosition());
             };
         };
     }
 
-    private Collection<CodePrimitive> parseIndexRegister(ParserContext parserContext, IndexRegisterToken indexRegisterToken) throws ParserException {
+    private Collection<CodePrimitive> parseIndexRegister(ParserContext parserContext, IndexRegisterToken indexRegisterToken) throws OctoAssemblerException {
         return switch (parserContext.pollTokenOrThrow(AssignmentOperatorToken.class, "Expected assignment operators ':=' or '+=' after an 'i' assignment!", indexRegisterToken.getSourcePosition()).getAssignmentOperation()) {
             case ADD -> List.of(new IncrementIndexRegisterAssignment(parserContext.getHere(), parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected 'vx' argument after 'i' increment statement!", indexRegisterToken.getSourcePosition()).getRegisterIndex()));
             case SET -> switch (parserContext.pollTokenOrThrow("Expected assignment operators ':=' or '+=' after an 'i' assignment!", indexRegisterToken.getSourcePosition())) {
                 case IntegerLiteralToken n -> {
                     if (!n.isUnsigned12Bits()) {
-                        throw new ParserException("Argument '%d' for 'i' assignment does not fit in 12 bits!".formatted(n.getValue()), indexRegisterToken.getSourcePosition());
+                        throw new OctoAssemblerException("Argument '%d' for 'i' assignment does not fit in 12 bits!".formatted(n.getValue()), indexRegisterToken.getSourcePosition());
                     }
                     yield List.of(new SetIndexRegisterToConstantAssignment(parserContext.getHere(), new AddressArgument.Resolved(n.getValue())));
                 }
@@ -520,26 +538,26 @@ public class OctoParser {
                         Token longAssignmentArgumentToken = parserContext.pollTokenOrThrow("Expected 12 bit integer or label argument for 'i := long' statement!", indexRegisterToken.getSourcePosition());
                         if (longAssignmentArgumentToken instanceof IntegerLiteralToken nnnn) {
                             if (!nnnn.isUnsigned16Bits()) {
-                                throw new ParserException("Argument '%d' for 'i := long' assignment does not fit in 16 bits!".formatted(nnnn.getValue()), nnnn.getSourcePosition());
+                                throw new OctoAssemblerException("Argument '%d' for 'i := long' assignment does not fit in 16 bits!".formatted(nnnn.getValue()), nnnn.getSourcePosition());
                             }
                             yield List.of(new SetIndexRegisterToLongConstantAssignment(parserContext.getHere(), new AddressArgument.Resolved(nnnn.getValue())));
                         } else {
                             parserContext.checkReservedName(longAssignmentArgumentToken);
-                            yield List.of(new SetIndexRegisterToLongConstantAssignment(parserContext.getHere(), new AddressArgument.NamedLabelReference(longAssignmentArgumentToken.getLexeme())));
+                            yield List.of(new SetIndexRegisterToLongConstantAssignment(parserContext.getHere(), new AddressArgument.NamedLabelReference(longAssignmentArgumentToken)));
                         }
                     }
-                    default -> throw new ParserException("Unexpected name '%s' after 'i' assignment statement!".formatted(indexRegisterToken.getLexeme()), indexRegisterToken.getSourcePosition());
+                    default -> throw new OctoAssemblerException("Unexpected name '%s' after 'i' assignment statement!".formatted(indexRegisterToken.getLexeme()), indexRegisterToken.getSourcePosition());
                 };
                 case Token labelToken -> {
                     parserContext.checkReservedName(labelToken);
-                    yield List.of(new SetIndexRegisterToConstantAssignment(parserContext.getHere(), new AddressArgument.NamedLabelReference(labelToken.getLexeme())));
+                    yield List.of(new SetIndexRegisterToConstantAssignment(parserContext.getHere(), new AddressArgument.NamedLabelReference(labelToken)));
                 }
             };
-            default -> throw new ParserException("Unexpected operator '%s' after an 'i' assignment!".formatted(indexRegisterToken.getLexeme()), indexRegisterToken.getSourcePosition());
+            default -> throw new OctoAssemblerException("Unexpected operator '%s' after an 'i' assignment!".formatted(indexRegisterToken.getLexeme()), indexRegisterToken.getSourcePosition());
         };
     }
 
-    private Collection<CodePrimitive> parseDirective(ParserContext parserContext, DirectiveToken directiveToken) throws ParserException {
+    private Collection<CodePrimitive> parseDirective(ParserContext parserContext, DirectiveToken directiveToken) throws OctoAssemblerException {
         return switch (directiveToken.getDirective()) {
             case LABEL_DEFINITION -> {
                 Token token = parserContext.pollTokenOrThrow("Expected label name following ':' directive!", directiveToken.getSourcePosition());
@@ -564,14 +582,14 @@ public class OctoParser {
         };
     }
 
-    private static class ParserContext {
+    private class ParserContext {
 
         private final SourceStream<Token> tokenStream;
         private final List<CodeElement> codeElements = new ArrayList<>();
         private final Map<String, DirectiveDefinition> directiveDefinitions = new HashMap<>();
         private final Map<InternalLabelKey, Integer> internalLabelDefinitions = new HashMap<>();
         private final Stack<InternalLabelKey> loopStack = new Stack<>();
-        private int here = 0x200;
+        private int here = programStart;
         private boolean foundMainLabel;
 
         private ParserContext(SourceStream<Token> tokenStream) {
@@ -612,22 +630,25 @@ public class OctoParser {
             return this.foundMainLabel;
         }
 
-        private void addCodeElement(CodeElement codeElement) {
+        private void addCodeElement(CodeElement codeElement) throws OctoAssemblerException {
+            if (codeElement instanceof LabelableElement labelableElement && labelableElement.getAddressArgument() instanceof AddressArgument.NamedLabelReference namedLabelReference) {
+                this.checkReservedName(namedLabelReference.token());
+            }
             this.codeElements.add(codeElement);
         }
 
-        private void addDirectiveDefinition(Token token, DirectiveDefinition directiveDefinition) throws ParserException {
+        private void addDirectiveDefinition(Token token, DirectiveDefinition directiveDefinition) throws OctoAssemblerException {
             String name = token.getLexeme();
             if (this.directiveDefinitions.containsKey(name)) {
-                throw new ParserException("Directive name '%s' is already defined!".formatted(name), token.getSourcePosition());
+                throw new OctoAssemblerException("Directive name '%s' is already defined!".formatted(name), token.getSourcePosition());
             }
             this.checkReservedName(token);
             if (directiveDefinition instanceof LabelDefinition labelDefinition && "main".equals(labelDefinition.getName())) {
                 this.foundMainLabel = true;
-                if (labelDefinition.getAddress() == 0x202 || labelDefinition.getAddress() == 0x200) {
+                if (labelDefinition.getAddress() == programStart + 2 || labelDefinition.getAddress() == programStart) {
                     this.here = 0x200;
                     this.codeElements.clear();
-                    directiveDefinition = new LabelDefinition("main", 0x200);
+                    directiveDefinition = new LabelDefinition("main", programStart);
                 }
             }
             this.directiveDefinitions.put(name, directiveDefinition);
@@ -641,23 +662,23 @@ public class OctoParser {
         }
 
 
-        private int addToHere(@Nullable Token token, int amount) throws ParserException {
+        private int addToHere(@Nullable Token token, int amount) throws OctoAssemblerException {
             int newHere = this.here + amount;
             if (newHere > 0xFFFF) {
-                throw new ParserException("ROM size exceeds the 16-bit integer limit!", token == null ? null : token.getSourcePosition());
+                throw new OctoAssemblerException("ROM size exceeds the 16-bit integer limit!", token == null ? null : token.getSourcePosition());
             }
             return newHere;
         }
 
-        private void incrementHere(@Nullable Token token, int amount) throws ParserException {
+        private void incrementHere(@Nullable Token token, int amount) throws OctoAssemblerException {
             this.here = this.addToHere(token, amount);
         }
 
-        private void incrementHere(@Nullable Token token, CodePrimitive codePrimitive) throws ParserException {
+        private void incrementHere(@Nullable Token token, CodePrimitive codePrimitive) throws OctoAssemblerException {
             this.incrementHere(token, codePrimitive.getSizeInBytes());
         }
 
-        private void incrementHere(CodePrimitive codePrimitive) throws ParserException {
+        private void incrementHere(CodePrimitive codePrimitive) throws OctoAssemblerException {
             this.incrementHere(null, codePrimitive);
         }
 
@@ -677,22 +698,26 @@ public class OctoParser {
             return this.tokenStream.poll()
                     .flatMap(token -> this.getDirective(token)
                             .map(directiveDefinition -> {
-                                this.expandDirective(directiveDefinition);
-                                return this.pollToken();
+                                if (directiveDefinition instanceof ExpandableDirective expandableDirective) {
+                                    this.expandDirective(expandableDirective, token.getSourcePosition());
+                                    return this.pollToken();
+                                } else {
+                                    return Optional.of(token);
+                                }
                             }).orElse(Optional.of(token)));
         }
 
-        private Token pollTokenOrThrow(String error, SourcePosition sourcePosition) throws ParserException {
-            return this.pollToken().orElseThrow(() -> new ParserException(error, sourcePosition));
+        private Token pollTokenOrThrow(String error, SourcePosition sourcePosition) throws OctoAssemblerException {
+            return this.pollToken().orElseThrow(() -> new OctoAssemblerException(error, sourcePosition));
         }
 
         @SuppressWarnings("unchecked")
-        private <T extends Token> T pollTokenOrThrow(Class<T> tokenClass, String error, SourcePosition sourcePosition) throws ParserException {
+        private <T extends Token> T pollTokenOrThrow(Class<T> tokenClass, String error, SourcePosition sourcePosition) throws OctoAssemblerException {
             Token token = this.pollTokenOrThrow(error, sourcePosition);
             if (tokenClass.isInstance(token)) {
                 return (T) token;
             } else {
-                throw new ParserException(error, sourcePosition);
+                throw new OctoAssemblerException(error, sourcePosition);
             }
         }
 
@@ -700,13 +725,17 @@ public class OctoParser {
             return this.tokenStream.peek()
                     .flatMap(token -> this.getDirective(token)
                             .map(directiveDefinition -> {
-                                this.expandDirective(directiveDefinition);
-                                return this.peekToken();
+                                if (directiveDefinition instanceof ExpandableDirective expandableDirective) {
+                                    this.expandDirective(expandableDirective, token.getSourcePosition());
+                                    return this.peekToken();
+                                } else {
+                                    return Optional.of(token);
+                                }
                             }).orElse(Optional.of(token)));
         }
 
-        private void expandDirective(DirectiveDefinition directiveDefinition) {
-            List<Token> directiveTokens = directiveDefinition.expand(this.here);
+        private void expandDirective(ExpandableDirective expandableDirective, SourcePosition sourcePosition) {
+            List<Token> directiveTokens = expandableDirective.expand(this.here, sourcePosition);
             for (int i = directiveTokens.size() - 1; i >= 0; i--) {
                 this.tokenStream.offerFront(directiveTokens.get(i));
             }
@@ -730,34 +759,12 @@ public class OctoParser {
             });
         }
 
-        private Collection<CodePrimitive> checkReservedName(Token token) throws ParserException {
+        private Collection<CodePrimitive> checkReservedName(Token token) throws OctoAssemblerException {
             if (token instanceof ReservedNameToken) {
-                throw new ParserException("The name '%s' is reserved and cannot be used as a label!".formatted(token.getLexeme()), token.getSourcePosition());
+                throw new OctoAssemblerException("The name '%s' is reserved and cannot be used as a label!".formatted(token.getLexeme()), token.getSourcePosition());
             } else {
-                return List.of(new CallStatement(this.here, new AddressArgument.NamedLabelReference(token.getLexeme())));
+                return List.of(new CallStatement(this.here, new AddressArgument.NamedLabelReference(token)));
             }
-        }
-
-    }
-
-    private static class ParserException extends Exception {
-
-        private final String error;
-
-        @Nullable
-        private final SourcePosition sourcePosition;
-
-        private ParserException(String error, @Nullable SourcePosition sourcePosition) {
-            this.error = error;
-            this.sourcePosition = sourcePosition;
-        }
-
-        private ParserException(String error) {
-            this(error, null);
-        }
-
-        private ParserResult toErrorResult() {
-            return new ParserResult.Error(this.error, this.sourcePosition);
         }
 
     }

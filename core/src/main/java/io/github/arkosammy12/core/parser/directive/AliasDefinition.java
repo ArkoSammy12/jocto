@@ -1,10 +1,11 @@
 package io.github.arkosammy12.core.parser.directive;
 
+import io.github.arkosammy12.core.lexer.SourcePosition;
 import io.github.arkosammy12.core.token.Token;
 
 import java.util.List;
 
-public final class AliasDefinition extends DirectiveDefinition {
+public final class AliasDefinition extends DirectiveDefinition implements ExpandableDirective {
 
     private final int registerIndex;
 
@@ -18,7 +19,7 @@ public final class AliasDefinition extends DirectiveDefinition {
     }
 
     @Override
-    public List<Token> expand(int currentOffset) {
+    public List<Token> expand(int currentOffset, SourcePosition sourcePosition) {
         return List.of();
     }
 

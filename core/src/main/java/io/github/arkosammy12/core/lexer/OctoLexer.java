@@ -1,6 +1,7 @@
 package io.github.arkosammy12.core.lexer;
 
 
+import io.github.arkosammy12.core.result.OctoLexerResult;
 import io.github.arkosammy12.core.token.Token;
 
 import java.util.ArrayList;
@@ -10,11 +11,7 @@ import java.util.Optional;
 
 public class OctoLexer {
 
-    /// Converts the provided stream of source characters into a stream of tokens suitable for parsing
-    ///
-    /// @param characterStream The stream of source characters to consume for tokenization
-    /// @return A LexerResult, representing a stream of tokens, or a failure message along with the position in the source file where the error was reported
-    public LexerResult tokenize(SourceStream<SourceCharacter> characterStream) {
+    public OctoLexerResult tokenize(SourceStream<SourceCharacter> characterStream) {
         TokenizerContext tokenizerContext = new TokenizerContext();
 
         while (!characterStream.isEmpty()) {
@@ -84,10 +81,10 @@ public class OctoLexer {
         }
 
         return switch (tokenizerContext.getState()) {
-            case STRING_TOKEN -> new LexerResult.Error("Unclosed string literal!", tokenizerContext.getTokenPosition());
+            case STRING_TOKEN -> new OctoLexerResult.Error("Unclosed string literal!", tokenizerContext.getTokenPosition());
             case TOKEN, WHITESPACE -> {
                 tokenizerContext.finishToken();
-                yield new LexerResult.Ok(new SourceStream<>(tokenizerContext.getTokens()));
+                yield new OctoLexerResult.Ok(new SourceStream<>(tokenizerContext.getTokens()));
             }
         };
     }
