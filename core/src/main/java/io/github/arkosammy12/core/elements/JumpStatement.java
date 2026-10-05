@@ -1,6 +1,10 @@
 package io.github.arkosammy12.core.elements;
 
 import io.github.arkosammy12.core.parser.AddressArgument;
+import io.github.arkosammy12.core.parser.InternalLabelKey;
+import io.github.arkosammy12.core.token.Token;
+
+import static io.github.arkosammy12.core.token.IntegerLiteralToken.isUnsigned12Bits;
 
 public final class JumpStatement extends Statement implements LabelableElement {
 
@@ -33,9 +37,16 @@ public final class JumpStatement extends Statement implements LabelableElement {
     public LabelResolveResult resolve(int address) {
         return switch (this.addressArgument) {
             case AddressArgument.Resolved(int resolvedAddress) -> new LabelResolveResult.AlreadyResolved(resolvedAddress);
-            case AddressArgument.Unresolved _ -> {
-                this.addressArgument = new AddressArgument.Resolved(address);
-                yield new LabelResolveResult.Ok();
+            case AddressArgument.Unresolved unresolved -> {
+                if (isUnsigned12Bits(address)) {
+                    this.addressArgument = new AddressArgument.Resolved(address);
+                    yield new LabelResolveResult.Ok();
+                } else {
+                    yield switch (unresolved) {
+                        case AddressArgument.NamedLabelReference(Token token) ->  new LabelResolveResult.LabelResolveError("The label '%s' does not fit in 12 bits!".formatted(token.getLexeme()), unresolved.getSourcePosition());
+                        case AddressArgument.InternalLabelReference(InternalLabelKey labelKey) -> new LabelResolveResult.LabelResolveError("The internal label '%s' does not fit in 12 bits!".formatted(labelKey), unresolved.getSourcePosition());
+                    };
+                }
             }
         };
     }

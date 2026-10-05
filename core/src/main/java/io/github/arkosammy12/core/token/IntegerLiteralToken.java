@@ -26,16 +26,24 @@ public final class IntegerLiteralToken extends LiteralToken {
     }
 
     public boolean isUnsigned12Bits() {
-        return this.value >= 0 && this.value <= 0xFFF;
+        return isUnsigned12Bits(this.value);
     }
 
     public boolean isUnsigned16Bits() {
-        return this.value >= 0 && this.value <= 0xFFFF;
+        return isUnsigned16Bits(this.value);
     }
 
     @Override
     public String toString() {
         return "IntegerLiteralToken[%s, address=%d]".formatted(this.getBaseStringContents(), this.value);
+    }
+
+    public static boolean isUnsigned12Bits(int value) {
+        return value >= 0 && value <= 0xFFF;
+    }
+
+    public static boolean isUnsigned16Bits(int value) {
+        return value >= 0 && value <= 0xFFFF;
     }
 
     public static Optional<IntegerLiteralToken> tryParse(String lexeme, SourcePosition sourcePosition) {
