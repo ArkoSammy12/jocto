@@ -31,4 +31,9 @@ public final class IfThenBlock extends IfBlock {
         return List.copyOf(codePrimitives);
     }
 
+    @Override
+    public String toString() {
+        return "IfThenBlock[%s]".formatted(this.getStringBaseContents());
+    }
+
 }

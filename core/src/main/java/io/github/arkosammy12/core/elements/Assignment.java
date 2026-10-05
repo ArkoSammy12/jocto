@@ -3,15 +3,15 @@ package io.github.arkosammy12.core.elements;
 public sealed abstract class Assignment extends Instruction permits
         AddConstantToRegisterAssignment,
         AddRegisterToRegisterAssignment,
-        BitwiseAndRegisterAssignment,
-        BitwiseOrRegisterAssignment,
-        BitwiseXorRegisterAssignment,
-        IncrementIndexRegisterAssignment,
+        BitwiseANDRegistersAssignment,
+        BitwiseORRegistersAssignment,
+        BitwiseXORRegistersAssignment,
+        AddRegisterToIndexRegisterAssignment,
         LeftShiftRegisterAssignment,
         LeftSubtractRegisterFromRegisterAssignment,
         RightShiftRegisterAssignment,
         RightSubtractRegisterFromRegisterAssignment,
-        SetBuzzerTimerAssignment,
+        SetSoundTimerAssignment,
         SetDelayTimerAssignment,
         SetIndexRegisterToBigHexCharAssignment,
         SetIndexRegisterToConstantAssignment,
@@ -26,6 +26,11 @@ public sealed abstract class Assignment extends Instruction permits
 
     public Assignment(int offset) {
         super(offset);
+    }
+
+    @Override
+    public String toString() {
+        return "Assignment[%s]".formatted(this.getStringBaseContents());
     }
 
 }

@@ -21,4 +21,9 @@ public final class LeftShiftRegisterAssignment extends Assignment {
         return new BytesResult.Data(fromNibbles(0x8, this.x, this.y, 0xE));
     }
 
+    @Override
+    public String toString() {
+        return "LeftShiftRegisterAssignment[%s, x=0x%01X, y=0x%01X]".formatted(this.getStringBaseContents(), this.x, this.y);
+    }
+
 }

@@ -16,4 +16,9 @@ public final class ExitStatement extends Statement {
         return new BytesResult.Data(fromOpcode(0x00FD));
     }
 
+    @Override
+    public String toString() {
+        return "ExitStatement[%s]".formatted(this.getStringBaseContents());
+    }
+
 }

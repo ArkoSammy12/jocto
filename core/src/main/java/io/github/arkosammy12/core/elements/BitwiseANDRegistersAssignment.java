@@ -1,11 +1,11 @@
 package io.github.arkosammy12.core.elements;
 
-public final class BitwiseAndRegisterAssignment extends Assignment {
+public final class BitwiseANDRegistersAssignment extends Assignment {
 
     private final int x;
     private final int y;
 
-    public BitwiseAndRegisterAssignment(int offset, int x, int y) {
+    public BitwiseANDRegistersAssignment(int offset, int x, int y) {
         super(offset);
         this.x = x;
         this.y = y;
@@ -19,6 +19,11 @@ public final class BitwiseAndRegisterAssignment extends Assignment {
     @Override
     public BytesResult getBytes() {
         return new BytesResult.Data(fromNibbles(0x8, this.x, this.y, 0x2));
+    }
+
+    @Override
+    public String toString() {
+        return "BitwiseANDRegistersAssignment[%s, x=0x%01X, y=0x%01X]".formatted(this.getStringBaseContents(), this.x, this.y);
     }
 
 }

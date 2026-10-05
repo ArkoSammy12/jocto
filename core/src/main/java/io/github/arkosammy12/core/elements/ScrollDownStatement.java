@@ -19,4 +19,9 @@ public final class ScrollDownStatement extends Statement {
         return new BytesResult.Data(fromN(0x00C, this.n));
     }
 
+    @Override
+    public String toString() {
+        return "ScrollDownStatement[%s, n=0x%01X]".formatted(this.getStringBaseContents(), this.n);
+    }
+
 }

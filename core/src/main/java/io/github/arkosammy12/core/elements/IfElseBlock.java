@@ -39,4 +39,9 @@ public final class IfElseBlock extends IfBlock {
         return List.copyOf(codePrimitives);
     }
 
+    @Override
+    public String toString() {
+        return "IfElseBlock[%s]".formatted(this.getStringBaseContents());
+    }
+
 }

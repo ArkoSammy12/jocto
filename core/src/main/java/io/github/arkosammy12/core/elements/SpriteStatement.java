@@ -23,4 +23,9 @@ public final class SpriteStatement extends Statement {
         return new BytesResult.Data(fromNibbles(0xD, this.x, this.y, this.n));
     }
 
+    @Override
+    public String toString() {
+        return "SpriteStatement[%s, x=0x%01X, y=0x%01X, n=0x%01X]".formatted(this.getStringBaseContents(), this.x, this.y, this.n);
+    }
+
 }

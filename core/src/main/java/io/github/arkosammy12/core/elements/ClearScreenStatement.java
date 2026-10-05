@@ -16,4 +16,9 @@ public final class ClearScreenStatement extends Statement {
         return new BytesResult.Data(fromOpcode(0x00E0));
     }
 
+    @Override
+    public String toString() {
+        return "ClearScreenStatement[%s]".formatted(this.getStringBaseContents());
+    }
+
 }

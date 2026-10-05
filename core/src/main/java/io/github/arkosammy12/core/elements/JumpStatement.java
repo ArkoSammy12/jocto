@@ -40,4 +40,9 @@ public final class JumpStatement extends Statement implements LabelableElement {
         };
     }
 
+    @Override
+    public String toString() {
+        return "JumpStatement[%s, address=%s]".formatted(this.getStringBaseContents(), this.addressArgument);
+    }
+
 }

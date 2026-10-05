@@ -399,7 +399,7 @@ public class OctoParser {
                     if (!n.isUnsigned4Bits()) {
                         throw new OctoAssemblerException("Plane statement argument %d for 'n' does not fit is not in the range [0, 15]".formatted(n.getValue()), instructionStatementNameToken.getSourcePosition());
                     }
-                    yield List.of(new PlaneStatement(parserContext.getHere(), n.getValue()));
+                    yield List.of(new SetBitplanesStatement(parserContext.getHere(), n.getValue()));
                 }
                 case AUDIO -> List.of(new AudioStatement(parserContext.getHere()));
                 case PITCH -> {
@@ -428,7 +428,7 @@ public class OctoParser {
                 if (!integerLiteralToken.is8Bits()) {
                     throw new OctoAssemblerException("Raw integer literal '%d' does not fit in 8 bits [-128, 255]".formatted(integerLiteralToken.getValue()), integerLiteralToken.getSourcePosition());
                 }
-                yield List.of(new ByteLiteral(parserContext.getHere(), integerLiteralToken.getValue()));
+                yield List.of(new BytePrimitive(parserContext.getHere(), integerLiteralToken.getValue()));
             }
             case FloatLiteralToken floatLiteralToken -> parserContext.checkReservedName(floatLiteralToken);
             case StringLiteralToken stringLiteralToken -> parserContext.checkReservedName(stringLiteralToken);
@@ -447,7 +447,7 @@ public class OctoParser {
                 if (parserContext.pollTokenOrThrow(AssignmentOperatorToken.class, "Expected assignment operator ':=' after buzzer statement!", assignmentKeywordToken.getSourcePosition()).getAssignmentOperation() != AssignmentOperation.SET) {
                     throw new OctoAssemblerException("Expected assignment operator ':=' after buzzer statement!", assignmentKeywordToken.getSourcePosition());
                 }
-                yield List.of(new SetBuzzerTimerAssignment(parserContext.getHere(), parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected 'vx' argument after delay statement!", assignmentKeywordToken.getSourcePosition()).getRegisterIndex()));
+                yield List.of(new SetSoundTimerAssignment(parserContext.getHere(), parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected 'vx' argument after delay statement!", assignmentKeywordToken.getSourcePosition()).getRegisterIndex()));
             }
             case PITCH -> {
                 if (parserContext.pollTokenOrThrow(AssignmentOperatorToken.class, "Expected assignment operator ':=' after pitch statement!", assignmentKeywordToken.getSourcePosition()).getAssignmentOperation() != AssignmentOperation.SET) {
@@ -461,9 +461,9 @@ public class OctoParser {
     
     private Collection<CodePrimitive> parseRegisterLiteral(ParserContext parserContext, RegisterLiteralToken vx) throws OctoAssemblerException {
         return switch (parserContext.pollTokenOrThrow(AssignmentOperatorToken.class, "Unknown operator on register assignment statement!", vx.getSourcePosition()).getAssignmentOperation()) {
-            case BITWISE_OR -> List.of(new BitwiseOrRegisterAssignment(parserContext.getHere(), vx.getRegisterIndex(), parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected vy argument after 'vx |=' assignment!", vx.getSourcePosition()).getRegisterIndex()));
-            case BITWISE_AND -> List.of(new BitwiseAndRegisterAssignment(parserContext.getHere(), vx.getRegisterIndex(), parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected vy argument after 'vx &=' assignment!", vx.getSourcePosition()).getRegisterIndex()));
-            case BITWISE_XOR -> List.of(new BitwiseXorRegisterAssignment(parserContext.getHere(), vx.getRegisterIndex(), parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected vy argument after 'vx ^=' assignment!", vx.getSourcePosition()).getRegisterIndex()));
+            case BITWISE_OR -> List.of(new BitwiseORRegistersAssignment(parserContext.getHere(), vx.getRegisterIndex(), parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected vy argument after 'vx |=' assignment!", vx.getSourcePosition()).getRegisterIndex()));
+            case BITWISE_AND -> List.of(new BitwiseANDRegistersAssignment(parserContext.getHere(), vx.getRegisterIndex(), parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected vy argument after 'vx &=' assignment!", vx.getSourcePosition()).getRegisterIndex()));
+            case BITWISE_XOR -> List.of(new BitwiseXORRegistersAssignment(parserContext.getHere(), vx.getRegisterIndex(), parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected vy argument after 'vx ^=' assignment!", vx.getSourcePosition()).getRegisterIndex()));
             case RIGHT_SHIFT -> List.of(new RightShiftRegisterAssignment(parserContext.getHere(), vx.getRegisterIndex(), parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected vy argument after 'vx >>=' assignment!", vx.getSourcePosition()).getRegisterIndex()));
             case LEFT_SHIFT -> List.of(new LeftShiftRegisterAssignment(parserContext.getHere(), vx.getRegisterIndex(), parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected vy argument after 'vx <<=' assignment!", vx.getSourcePosition()).getRegisterIndex()));
             case RIGHT_SUBTRACT -> List.of(new RightSubtractRegisterFromRegisterAssignment(parserContext.getHere(), vx.getRegisterIndex(), parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected vy argument after 'vx =-' assignment!", vx.getSourcePosition()).getRegisterIndex()));
@@ -518,7 +518,7 @@ public class OctoParser {
 
     private Collection<CodePrimitive> parseIndexRegister(ParserContext parserContext, IndexRegisterToken indexRegisterToken) throws OctoAssemblerException {
         return switch (parserContext.pollTokenOrThrow(AssignmentOperatorToken.class, "Expected assignment operators ':=' or '+=' after an 'i' assignment!", indexRegisterToken.getSourcePosition()).getAssignmentOperation()) {
-            case ADD -> List.of(new IncrementIndexRegisterAssignment(parserContext.getHere(), parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected 'vx' argument after 'i' increment statement!", indexRegisterToken.getSourcePosition()).getRegisterIndex()));
+            case ADD -> List.of(new AddRegisterToIndexRegisterAssignment(parserContext.getHere(), parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected 'vx' argument after 'i' increment statement!", indexRegisterToken.getSourcePosition()).getRegisterIndex()));
             case SET -> switch (parserContext.pollTokenOrThrow("Expected assignment operators ':=' or '+=' after an 'i' assignment!", indexRegisterToken.getSourcePosition())) {
                 case IntegerLiteralToken n -> {
                     if (!n.isUnsigned12Bits()) {

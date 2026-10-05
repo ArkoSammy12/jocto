@@ -19,4 +19,9 @@ public final class SaveFlagsStatement extends Statement {
         return new BytesResult.Data(fromXNN(0xF, this.x, 0x75));
     }
 
+    @Override
+    public String toString() {
+        return "SaveFlagsStatement[%s, x=0x%01X]".formatted(this.getStringBaseContents(), this.x);
+    }
+
 }

@@ -16,4 +16,9 @@ public final class ScrollRightStatement extends Statement {
         return new BytesResult.Data(fromOpcode(0x00FB));
     }
 
+    @Override
+    public String toString() {
+        return "ScrollRightStatement[%s]".formatted(this.getStringBaseContents());
+    }
+
 }

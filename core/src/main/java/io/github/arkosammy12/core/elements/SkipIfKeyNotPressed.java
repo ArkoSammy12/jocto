@@ -21,4 +21,9 @@ public final class SkipIfKeyNotPressed extends SkipInstruction {
         return new BytesResult.Data(fromXNN(0xE, this.x, 0xA1));
     }
 
+    @Override
+    public String toString() {
+        return "SkipIfKeyNotPressed[%s, x=0x%01X]".formatted(this.getStringBaseContents(), this.x);
+    }
+
 }

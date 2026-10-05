@@ -19,4 +19,9 @@ public final class LoadFlagsStatement extends Statement {
         return new BytesResult.Data(fromXNN(0xF, this.x, 0x85));
     }
 
+    @Override
+    public String toString() {
+        return "LoadFlagsStatement[%s, x=0x%01X]".formatted(this.getStringBaseContents(), this.x);
+    }
+
 }

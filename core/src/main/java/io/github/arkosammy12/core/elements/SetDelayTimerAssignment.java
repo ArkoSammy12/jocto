@@ -19,4 +19,9 @@ public final class SetDelayTimerAssignment extends Assignment {
         return new BytesResult.Data(fromXNN(0xF, this.x, 0x15));
     }
 
+    @Override
+    public String toString() {
+        return "SetDelayTimerAssignment[%s, x=0x%01X]".formatted(this.getStringBaseContents(), this.x);
+    }
+
 }

@@ -24,4 +24,9 @@ public final class SkipIfRegistersEqual extends SkipInstruction {
         return new BytesResult.Data(fromNibbles(0x5, this.x, this.y, 0x0));
     }
 
+    @Override
+    public String toString() {
+        return "SkipIfRegistersEqual[%s, x=0x%01X, y=0x%01X]".formatted(this.getStringBaseContents(), this.x, this.y);
+    }
+
 }

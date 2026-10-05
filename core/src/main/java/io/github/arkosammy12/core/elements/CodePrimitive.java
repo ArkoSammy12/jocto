@@ -1,6 +1,6 @@
 package io.github.arkosammy12.core.elements;
 
-public abstract sealed class CodePrimitive extends CodeElement permits Instruction, ByteLiteral, PointerLiteral {
+public abstract sealed class CodePrimitive extends CodeElement permits Instruction, BytePrimitive, PointerPrimitive {
 
     protected final int offset;
 
@@ -17,7 +17,7 @@ public abstract sealed class CodePrimitive extends CodeElement permits Instructi
     public abstract BytesResult getBytes();
 
     protected String getStringBaseContents() {
-        return "offset=%d, sizeInBytes=%d".formatted(this.offset, this.getSizeInBytes());
+        return "offset=0x%03X, sizeInBytes=%d".formatted(this.offset, this.getSizeInBytes());
     }
 
     @Override

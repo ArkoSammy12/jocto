@@ -19,4 +19,9 @@ public final class SetRegisterToKeyAssignment extends Assignment {
         return new BytesResult.Data(fromXNN(0xF, this.x, 0x0A));
     }
 
+    @Override
+    public String toString() {
+        return "SetRegisterToKeyAssignment[%s, x=0x%01X]".formatted(this.getStringBaseContents(), this.x);
+    }
+
 }

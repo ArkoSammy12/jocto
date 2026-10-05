@@ -12,7 +12,7 @@ public sealed abstract class Statement extends Instruction permits
         LoadFlagsStatement,
         LoadRegistersStatement,
         LoresStatement,
-        PlaneStatement,
+        SetBitplanesStatement,
         ReturnStatement,
         SaveFlagsStatement,
         SaveRegistersStatement,

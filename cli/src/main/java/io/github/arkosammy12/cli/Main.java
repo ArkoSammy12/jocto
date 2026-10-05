@@ -1,6 +1,7 @@
 package io.github.arkosammy12.cli;
 
 import io.github.arkosammy12.core.assembler.OctoAssembler;
+import io.github.arkosammy12.core.assembler.OctoAssemblyStage;
 import io.github.arkosammy12.core.result.OctoAssemblerResult;
 import io.github.arkosammy12.core.result.OctoCodegenResult;
 import io.github.arkosammy12.core.assembler.OctoCodegen;
@@ -19,6 +20,8 @@ import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+
+import static io.github.arkosammy12.core.assembler.OctoAssembler.byteArrayToString;
 
 public class Main {
 
@@ -129,31 +132,16 @@ public class Main {
                 """;
 
         SourceFile sourceFile = new SourceFile(List.of(test.split("\n")));
-        OctoAssembler assembler = new OctoAssembler(0x200);
+        OctoAssembler assembler = new OctoAssembler(0x200, OctoAssemblyStage.CODEGEN);
         switch (assembler.assemble(sourceFile)) {
-            case OctoCodegenResult.Ok(byte[] rom) -> {
-                IO.println(formattedByteArrayToString(rom));
-            }
+            case OctoParserResult.Ok(Collection<CodeElement> codeElements, _, _) -> codeElements.forEach(IO::println);
+            case OctoCodegenResult.Ok(byte[] rom) -> IO.println(byteArrayToString(rom));
             case OctoAssemblerResult.Error error -> IO.println("""
                 Assembly error!
                 %s %s
                 """.formatted(error.getSourcePosition().map(position -> "(%d:%d)".formatted(position.row() + 1, position.column() + 1)).orElse(""), error.getError()));
             default -> {}
         }
-    }
-
-    private static String formattedByteArrayToString(byte[] bytes) {
-        StringBuilder stringBuilder = new StringBuilder();
-        //stringBuilder.append("[");
-        for (int i = 0; i < bytes.length; i++) {
-            if (i == 0) {
-                stringBuilder.append("%02X".formatted(bytes[i] & 0xFF));
-            } else {
-                stringBuilder.append(" %02X".formatted(bytes[i] & 0xFF));
-            }
-        }
-        //stringBuilder.append("]");
-        return stringBuilder.toString();
     }
 
 }

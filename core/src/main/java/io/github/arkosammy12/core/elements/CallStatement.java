@@ -40,4 +40,9 @@ public final class CallStatement extends Statement implements LabelableElement {
         };
     }
 
+    @Override
+    public String toString() {
+        return "CallStatement[%s, address=%s]".formatted(this.getStringBaseContents(), this.addressArgument);
+    }
+
 }

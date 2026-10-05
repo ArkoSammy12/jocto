@@ -1,10 +1,10 @@
 package io.github.arkosammy12.core.elements;
 
-public final class PlaneStatement extends Statement {
+public final class SetBitplanesStatement extends Statement {
 
     private final int n;
 
-    public PlaneStatement(int offset, int n) {
+    public SetBitplanesStatement(int offset, int n) {
         super(offset);
         this.n = n;
     }
@@ -17,6 +17,11 @@ public final class PlaneStatement extends Statement {
     @Override
     public BytesResult getBytes() {
         return new BytesResult.Data(fromXNN(0xF, this.n, 0x01));
+    }
+
+    @Override
+    public String toString() {
+        return "SetBitplanesStatement[%s, n=0x%01X]".formatted(this.getStringBaseContents(), this.n);
     }
 
 }

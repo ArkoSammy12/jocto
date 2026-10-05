@@ -2,11 +2,11 @@ package io.github.arkosammy12.core.elements;
 
 import io.github.arkosammy12.core.parser.AddressArgument;
 
-public final class PointerLiteral extends CodePrimitive implements LabelableElement {
+public final class PointerPrimitive extends CodePrimitive implements LabelableElement {
 
     private AddressArgument addressArgument;
 
-    public PointerLiteral(int offset, AddressArgument addressArgument) {
+    public PointerPrimitive(int offset, AddressArgument addressArgument) {
         super(offset);
         this.addressArgument = addressArgument;
     }
@@ -38,6 +38,11 @@ public final class PointerLiteral extends CodePrimitive implements LabelableElem
                 yield new LabelResolveResult.Ok();
             }
         };
+    }
+
+    @Override
+    public String toString() {
+        return "PointerPrimitive[%s, address=%s]".formatted(this.getStringBaseContents(), this.addressArgument);
     }
 
 }

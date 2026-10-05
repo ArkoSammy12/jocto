@@ -40,4 +40,9 @@ public final class SetIndexRegisterToConstantAssignment extends Assignment imple
         };
     }
 
+    @Override
+    public String toString() {
+        return "SetIndexRegisterToConstantAssignment[%s, address=%s]".formatted(this.getStringBaseContents(), this.addressArgument);
+    }
+
 }

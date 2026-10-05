@@ -40,4 +40,9 @@ public final class SetIndexRegisterToLongConstantAssignment extends Assignment i
         };
     }
 
+    @Override
+    public String toString() {
+        return "SetIndexRegisterToLongConstantAssignment[%s, address=%s]".formatted(this.getStringBaseContents(), this.addressArgument);
+    }
+
 }

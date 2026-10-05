@@ -21,4 +21,9 @@ public final class AddConstantToRegisterAssignment extends Assignment {
         return new BytesResult.Data(fromXNN(0x7, this.x, this.nn));
     }
 
+    @Override
+    public String toString() {
+        return "AddConstantToRegisterAssignment[%s, x=0x%01X, nn=0x%02X]".formatted(this.getStringBaseContents(), this.x, this.nn);
+    }
+
 }

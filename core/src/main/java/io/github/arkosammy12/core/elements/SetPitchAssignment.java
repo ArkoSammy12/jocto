@@ -19,4 +19,9 @@ public final class SetPitchAssignment extends Assignment {
         return new BytesResult.Data(fromXNN(0xF, this.x, 0x3A));
     }
 
+    @Override
+    public String toString() {
+        return "SetPitchAssignment[%s, x=0x%01X]".formatted(this.getStringBaseContents(), this.x);
+    }
+
 }

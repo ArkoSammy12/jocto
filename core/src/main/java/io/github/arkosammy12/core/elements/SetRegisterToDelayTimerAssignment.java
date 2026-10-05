@@ -19,4 +19,9 @@ public final class SetRegisterToDelayTimerAssignment extends Assignment {
         return new BytesResult.Data(fromXNN(0xF, this.x, 0x07));
     }
 
+    @Override
+    public String toString() {
+        return "SetRegisterToDelayTimerAssignment[%s, x=0x%01X]".formatted(this.getStringBaseContents(), this.x);
+    }
+
 }

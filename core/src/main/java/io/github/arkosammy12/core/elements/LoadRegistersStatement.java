@@ -30,4 +30,9 @@ public final class LoadRegistersStatement extends Statement {
         return new BytesResult.Data(this.customRange ? fromNibbles(0x5, this.begin, this.end, 0x3) : fromXNN(0xF, this.end, 0x65));
     }
 
+    @Override
+    public String toString() {
+        return "LoadRegistersStatement[%s, customRange=%s, begin=0x%01X, end=0x%01X]".formatted(this.getStringBaseContents(), this.customRange, this.begin, this.end);
+    }
+
 }

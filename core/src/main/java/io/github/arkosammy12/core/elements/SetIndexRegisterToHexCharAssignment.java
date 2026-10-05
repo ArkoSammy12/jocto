@@ -19,4 +19,9 @@ public final class SetIndexRegisterToHexCharAssignment extends Assignment {
         return new BytesResult.Data(fromXNN(0xF, this.x, 0x29));
     }
 
+    @Override
+    public String toString() {
+        return "SetIndexRegisterToHexCharAssignment[%s, x=0x%01X]".formatted(this.getStringBaseContents(), this.x);
+    }
+
 }

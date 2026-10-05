@@ -21,4 +21,9 @@ public final class SetRegisterToRandomAssignment extends Assignment {
         return new BytesResult.Data(fromXNN(0xC, this.x, this.nn));
     }
 
+    @Override
+    public String toString() {
+        return "SetRegisterToRandomAssignment[%s, x=0x%01X, nn=0x%02X]".formatted(this.getStringBaseContents(), this.x, this.nn);
+    }
+
 }

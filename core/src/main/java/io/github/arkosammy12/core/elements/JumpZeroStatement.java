@@ -40,4 +40,9 @@ public final class JumpZeroStatement extends Statement implements LabelableEleme
         };
     }
 
+    @Override
+    public String toString() {
+        return "JumpZeroStatement[%s, address=%s]".formatted(this.getStringBaseContents(), this.addressArgument);
+    }
+
 }

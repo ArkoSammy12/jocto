@@ -28,4 +28,9 @@ public final class IfBeginEndBlock extends IfBlock {
         return List.copyOf(codePrimitives);
     }
 
+    @Override
+    public String toString() {
+        return "IfBeginBlock[%s]".formatted(this.getStringBaseContents());
+    }
+
 }

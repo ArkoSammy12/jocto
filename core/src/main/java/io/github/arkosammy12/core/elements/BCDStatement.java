@@ -19,4 +19,9 @@ public final class BCDStatement extends Statement {
         return new BytesResult.Data(fromXNN(0xF, this.x, 0x33));
     }
 
+    @Override
+    public String toString() {
+        return "BCDStatement[%s, x=0x%01X]".formatted(this.getStringBaseContents(), this.x);
+    }
+
 }

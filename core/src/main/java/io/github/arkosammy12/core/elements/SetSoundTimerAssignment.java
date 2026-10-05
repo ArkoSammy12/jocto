@@ -1,10 +1,10 @@
 package io.github.arkosammy12.core.elements;
 
-public final class SetBuzzerTimerAssignment extends Assignment {
+public final class SetSoundTimerAssignment extends Assignment {
 
     private final int x;
 
-    public SetBuzzerTimerAssignment(int offset, int x) {
+    public SetSoundTimerAssignment(int offset, int x) {
         super(offset);
         this.x = x;
     }
@@ -17,6 +17,11 @@ public final class SetBuzzerTimerAssignment extends Assignment {
     @Override
     public BytesResult getBytes() {
         return new BytesResult.Data(fromXNN(0xF, this.x, 0x18));
+    }
+
+    @Override
+    public String toString() {
+        return "SetSoundTimerAssignment[%s, x=0x%01X]".formatted(this.getStringBaseContents(), this.x);
     }
 
 }

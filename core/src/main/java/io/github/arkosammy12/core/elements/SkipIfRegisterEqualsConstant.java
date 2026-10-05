@@ -24,4 +24,9 @@ public final class SkipIfRegisterEqualsConstant extends SkipInstruction {
         return new BytesResult.Data(fromXNN(0x3, this.x, this.nn));
     }
 
+    @Override
+    public String toString() {
+        return "SkipIfRegisterEqualsConstant[%s, x=0x%01X, nn=0x%02X]".formatted(this.getStringBaseContents(), this.x, this.nn);
+    }
+
 }

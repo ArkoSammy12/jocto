@@ -16,4 +16,9 @@ public final class ReturnStatement extends Statement {
         return new BytesResult.Data(fromOpcode(0x00EE));
     }
 
+    @Override
+    public String toString() {
+        return "ReturnStatement[%s]".formatted(this.getStringBaseContents());
+    }
+
 }

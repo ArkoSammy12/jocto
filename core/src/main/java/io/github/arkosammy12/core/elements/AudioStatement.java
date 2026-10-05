@@ -16,4 +16,9 @@ public final class AudioStatement extends Statement {
         return new BytesResult.Data(fromOpcode(0xF002));
     }
 
+    @Override
+    public String toString() {
+        return "AudioStatement[%s]".formatted(this.getStringBaseContents());
+    }
+
 }

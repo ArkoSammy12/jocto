@@ -16,4 +16,9 @@ public final class HiresStatement extends Statement {
         return new BytesResult.Data(fromOpcode(0x00FF));
     }
 
+    @Override
+    public String toString() {
+        return "HiresStatement[%s]".formatted(this.getStringBaseContents());
+    }
+
 }

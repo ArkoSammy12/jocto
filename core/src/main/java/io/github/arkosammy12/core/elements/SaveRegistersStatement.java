@@ -30,4 +30,9 @@ public final class SaveRegistersStatement extends Statement {
         return new BytesResult.Data(this.customRange ? fromNibbles(0x5, this.begin, this.end, 0x2) : fromXNN(0xF, this.end, 0x55));
     }
 
+    @Override
+    public String toString() {
+        return "SaveRegistersStatement[%s, customRange=%s, begin=0x%01X, end=0x%01X]".formatted(this.getStringBaseContents(), this.customRange, this.begin, this.end);
+    }
+
 }

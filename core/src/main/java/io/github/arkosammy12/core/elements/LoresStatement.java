@@ -16,4 +16,9 @@ public final class LoresStatement extends Statement {
         return new BytesResult.Data(fromOpcode(0x00FE));
     }
 
+    @Override
+    public String toString() {
+        return "LoresStatement[%s]".formatted(this.getStringBaseContents());
+    }
+
 }
