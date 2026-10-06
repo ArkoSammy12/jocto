@@ -50,18 +50,12 @@ public class SourceStream<T> {
         }
     }
 
-    public Optional<Collection<T>> pollUntil(Predicate<T> characterPredicate) {
+    public Collection<T> pollUntil(Predicate<T> characterPredicate) {
         Collection<T> characters = new ArrayList<>();
-
         while (!this.peek().map(characterPredicate::test).orElse(true)) {
             this.poll().ifPresent(characters::add);
         }
-
-        if (characters.isEmpty()) {
-            return Optional.empty();
-        } else {
-            return Optional.of(characters);
-        }
+        return characters;
     }
 
     public Optional<T> peek() {
