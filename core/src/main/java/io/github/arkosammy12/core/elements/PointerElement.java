@@ -6,11 +6,11 @@ import io.github.arkosammy12.core.token.Token;
 
 import static io.github.arkosammy12.core.token.IntegerLiteralToken.isUnsigned16Bits;
 
-public final class PointerPrimitive extends CodePrimitive implements LabelableElement {
+public final class PointerElement extends CodeElement implements LabelableElement {
 
     private AddressArgument addressArgument;
 
-    public PointerPrimitive(int offset, AddressArgument addressArgument) {
+    public PointerElement(int offset, AddressArgument addressArgument) {
         super(offset);
         this.addressArgument = addressArgument;
     }

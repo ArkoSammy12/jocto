@@ -1,6 +1,6 @@
 package io.github.arkosammy12.core.elements;
 
-public sealed abstract class Statement extends Instruction permits
+public sealed abstract class Statement extends InstructionElement permits
         AudioStatement,
         BCDStatement,
         CallStatement,

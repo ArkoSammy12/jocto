@@ -1,6 +1,6 @@
 package io.github.arkosammy12.core.elements;
 
-public final class SkipIfRegistersNotEqual extends SkipInstruction {
+public final class SkipIfRegistersNotEqual extends SkipInstructionElement {
 
     private final int y;
 
@@ -10,7 +10,7 @@ public final class SkipIfRegistersNotEqual extends SkipInstruction {
     }
 
     @Override
-    public SkipInstruction invertCondition() {
+    public SkipInstructionElement invertCondition() {
         return new SkipIfRegistersEqual(this.offset, this.x, this.y);
     }
 

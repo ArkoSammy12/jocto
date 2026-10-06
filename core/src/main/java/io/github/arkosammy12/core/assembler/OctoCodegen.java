@@ -26,14 +26,7 @@ public class OctoCodegen {
         try {
             CodegenContext codegenContext = new CodegenContext(labelDefinitions, internalLabelDefinitions);
             for (CodeElement codeElement : codeElements) {
-                switch (codeElement) {
-                    case CodeBlock codeBlock -> {
-                        for (CodePrimitive codePrimitive : codeBlock.expand()) {
-                            this.consumePrimitive(codegenContext, codePrimitive);
-                        }
-                    }
-                    case CodePrimitive codePrimitive -> this.consumePrimitive(codegenContext, codePrimitive);
-                }
+                this.consumePrimitive(codegenContext, codeElement);
             }
             return new OctoCodegenResult.Ok(codegenContext.getBytes());
         } catch (OctoAssemblerException e) {
@@ -41,8 +34,8 @@ public class OctoCodegen {
         }
     }
 
-    private void consumePrimitive(CodegenContext codegenContext, CodePrimitive codePrimitive) throws OctoAssemblerException {
-        if (codePrimitive instanceof LabelableElement labelableElement && labelableElement.getAddressArgument() instanceof AddressArgument.Unresolved unresolvedAddress) {
+    private void consumePrimitive(CodegenContext codegenContext, CodeElement codeElement) throws OctoAssemblerException {
+        if (codeElement instanceof LabelableElement labelableElement && labelableElement.getAddressArgument() instanceof AddressArgument.Unresolved unresolvedAddress) {
             switch (unresolvedAddress) {
                 case AddressArgument.NamedLabelReference(Token token) -> {
                     Optional<LabelDefinition> optionalLabelDefinition = codegenContext.getLabelDefinition(token.getLexeme());
@@ -68,8 +61,8 @@ public class OctoCodegen {
                 }
             }
         }
-        switch (codePrimitive.getBytes()) {
-            case BytesResult.Data(byte[] bytes) -> codegenContext.addBytes(bytes, codePrimitive.getOffset());
+        switch (codeElement.getBytes()) {
+            case BytesResult.Data(byte[] bytes) -> codegenContext.addBytes(bytes, codeElement.getOffset());
             case BytesResult.UnresolvedLabel(AddressArgument.Unresolved unresolved) -> throw switch (unresolved) {
                 case AddressArgument.NamedLabelReference(Token token) -> new OctoAssemblerException("Unresolved label '%s'".formatted(token.getLexeme()), token.getSourcePosition());
                 case AddressArgument.InternalLabelReference(InternalLabelKey internalLabelKey) -> new OctoAssemblerException("Unresolved internal label '%s'".formatted(internalLabelKey), internalLabelKey.sourcePositionKey());

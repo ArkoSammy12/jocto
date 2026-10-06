@@ -1,6 +1,6 @@
 package io.github.arkosammy12.core.elements;
 
-public sealed abstract class SkipInstruction extends Instruction permits
+public sealed abstract class SkipInstructionElement extends InstructionElement permits
         SkipIfKeyNotPressed,
         SkipIfKeyPressed,
         SkipIfRegisterEqualsConstant,
@@ -10,11 +10,11 @@ public sealed abstract class SkipInstruction extends Instruction permits
 
     protected final int x;
 
-    public SkipInstruction(int offset, int x) {
+    public SkipInstructionElement(int offset, int x) {
         super(offset);
         this.x = x;
     }
 
-    abstract public SkipInstruction invertCondition();
+    abstract public SkipInstructionElement invertCondition();
 
 }

@@ -1,13 +1,13 @@
 package io.github.arkosammy12.core.elements;
 
-public final class SkipIfKeyPressed extends SkipInstruction {
+public final class SkipIfKeyPressed extends SkipInstructionElement {
 
     public SkipIfKeyPressed(int offset, int x) {
         super(offset, x);
     }
 
     @Override
-    public SkipInstruction invertCondition() {
+    public SkipInstructionElement invertCondition() {
         return new SkipIfKeyNotPressed(this.offset, this.x);
     }
 

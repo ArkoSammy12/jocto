@@ -1,10 +1,10 @@
 package io.github.arkosammy12.core.elements;
 
-public final class BytePrimitive extends CodePrimitive {
+public final class ByteElement extends CodeElement {
 
     private final int value;
 
-    public BytePrimitive(int offset, int value) {
+    public ByteElement(int offset, int value) {
         super(offset);
         this.value = value & 0xFF;
     }
