@@ -40,7 +40,7 @@ public class OctoParser {
                     Collection<? extends CodeElement> codeElements = switch (token) {
                         case IfBlockKeywordToken ifBlockKeywordToken -> this.parseIfBlockKeywordToken(parserContext, ifBlockKeywordToken);
                         case LoopBlockKeywordToken loopBlockKeywordToken -> this.parseLoopBlockKeywordToken(parserContext, loopBlockKeywordToken);
-                        default -> this.parseTopLevel(parserContext, token);
+                        default -> this.parseCodeToken(parserContext, token);
                     };
                     for (CodeElement codeElement : codeElements) {
                         parserContext.addCodeElement(codeElement);
@@ -64,7 +64,7 @@ public class OctoParser {
         }
     }
 
-    private Collection<? extends CodeElement> parseTopLevel(ParserContext parserContext, Token token) throws OctoAssemblerException {
+    private Collection<? extends CodeElement> parseCodeToken(ParserContext parserContext, Token token) throws OctoAssemblerException {
         Collection<CodeElement> codeElements = this.parseToken(parserContext, token);
         for (CodeElement codeElement : codeElements) {
             parserContext.incrementHere(token, codeElement);
@@ -88,7 +88,7 @@ public class OctoParser {
                                 ifThenBlockElements.addAll(switch (ifThenBlockToken.get()) {
                                     case IfBlockKeywordToken innerIfBlockKeyword -> this.parseIfBlockKeywordToken(parserContext, innerIfBlockKeyword);
                                     case LoopBlockKeywordToken innerLoopBlockKeywordToken -> this.parseLoopBlockKeywordToken(parserContext, innerLoopBlockKeywordToken);
-                                    case Token innerToken -> this.parseToken(parserContext, innerToken);
+                                    case Token innerToken -> this.parseCodeToken(parserContext, innerToken);
                                 });
                             }
                         }
@@ -328,103 +328,102 @@ public class OctoParser {
     private Collection<CodeElement> parseInstructionStatementNameToken(ParserContext parserContext, InstructionStatementNameToken instructionStatementNameToken) throws OctoAssemblerException {
         return switch (instructionStatementNameToken) {
             case SemicolonToken _ -> List.of(new ReturnStatement(parserContext.getHere()));
-            case NonSymbolInstructionStatementKeywordToken nonSymbolInstructionStatementKeywordToken ->
-                switch (nonSymbolInstructionStatementKeywordToken.getInstructionStatementKeyword()) {
-                    case RETURN -> List.of(new ReturnStatement(parserContext.getHere()));
-                    case CLEAR -> List.of(new ClearScreenStatement(parserContext.getHere()));
-                    case BCD -> List.of(new BCDStatement(parserContext.getHere(), parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected register operand in 'bcd' statement!", instructionStatementNameToken.getSourcePosition(), token -> "The operand '%s' is not a register!".formatted(token.getLexeme())).getRegisterIndex()));
-                    case SAVE -> {
-                        RegisterLiteralToken vx = parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected register operand in 'save' statement!", instructionStatementNameToken.getSourcePosition(), token -> "The operand '%s' is not a register!".formatted(token.getLexeme()));
-                        Optional<DashToken> dashToken = parserContext.peekTokenAndPollIfPresent(DashToken.class);
-                        if (dashToken.isPresent()) {
-                            yield List.of(new SaveRegistersStatement(parserContext.getHere(), vx.getRegisterIndex(), parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected register operand after '-' in 'save' statement!", dashToken.get().getSourcePosition(), token -> "The operand '%s' is not a register!".formatted(token.getLexeme())).getRegisterIndex()));
-                        } else {
-                            yield List.of(new SaveRegistersStatement(parserContext.getHere(), vx.getRegisterIndex()));
-                        }
+            case NonSymbolInstructionStatementKeywordToken nonSymbolInstructionStatementKeywordToken -> switch (nonSymbolInstructionStatementKeywordToken.getInstructionStatementKeyword()) {
+                case RETURN -> List.of(new ReturnStatement(parserContext.getHere()));
+                case CLEAR -> List.of(new ClearScreenStatement(parserContext.getHere()));
+                case BCD -> List.of(new BCDStatement(parserContext.getHere(), parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected register operand in 'bcd' statement!", instructionStatementNameToken.getSourcePosition(), token -> "The operand '%s' is not a register!".formatted(token.getLexeme())).getRegisterIndex()));
+                case SAVE -> {
+                    RegisterLiteralToken vx = parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected register operand in 'save' statement!", instructionStatementNameToken.getSourcePosition(), token -> "The operand '%s' is not a register!".formatted(token.getLexeme()));
+                    Optional<DashToken> dashToken = parserContext.peekTokenAndPollIfPresent(DashToken.class);
+                    if (dashToken.isPresent()) {
+                        yield List.of(new SaveRegistersStatement(parserContext.getHere(), vx.getRegisterIndex(), parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected register operand after '-' in 'save' statement!", dashToken.get().getSourcePosition(), token -> "The operand '%s' is not a register!".formatted(token.getLexeme())).getRegisterIndex()));
+                    } else {
+                        yield List.of(new SaveRegistersStatement(parserContext.getHere(), vx.getRegisterIndex()));
                     }
-                    case LOAD -> {
-                        RegisterLiteralToken vx = parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected register in 'load' statement!", instructionStatementNameToken.getSourcePosition(), token -> "The operand '%s' is not a register!".formatted(token.getLexeme()));
-                        Optional<DashToken> dashToken = parserContext.peekTokenAndPollIfPresent(DashToken.class);
-                        if (dashToken.isPresent()) {
-                            yield List.of(new LoadRegistersStatement(parserContext.getHere(), vx.getRegisterIndex(), parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected register operand after '-' in 'load' statement!", dashToken.get().getSourcePosition(), token -> "The operand '%s' is not a register!".formatted(token.getLexeme())).getRegisterIndex()));
-                        } else {
-                            yield List.of(new LoadRegistersStatement(parserContext.getHere(), vx.getRegisterIndex()));
-                        }
+                }
+                case LOAD -> {
+                    RegisterLiteralToken vx = parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected register in 'load' statement!", instructionStatementNameToken.getSourcePosition(), token -> "The operand '%s' is not a register!".formatted(token.getLexeme()));
+                    Optional<DashToken> dashToken = parserContext.peekTokenAndPollIfPresent(DashToken.class);
+                    if (dashToken.isPresent()) {
+                        yield List.of(new LoadRegistersStatement(parserContext.getHere(), vx.getRegisterIndex(), parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected register operand after '-' in 'load' statement!", dashToken.get().getSourcePosition(), token -> "The operand '%s' is not a register!".formatted(token.getLexeme())).getRegisterIndex()));
+                    } else {
+                        yield List.of(new LoadRegistersStatement(parserContext.getHere(), vx.getRegisterIndex()));
                     }
-                    case SPRITE -> {
-                        RegisterLiteralToken vx = parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected 'vx' operand in 'sprite' statement!", instructionStatementNameToken.getSourcePosition(), token -> "The operand '%s' is not a register!".formatted(token.getLexeme()));
-                        RegisterLiteralToken vy = parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected 'vy' operand in 'sprite' statement!", vx.getSourcePosition(), token -> "The operand '%s' is not a register!".formatted(token.getLexeme()));
-                        IntegerLiteralToken n = parserContext.pollTokenOrThrow(IntegerLiteralToken.class, "Expected 'n' operand in 'sprite' statement!", vy.getSourcePosition(), token -> "The operand '%s' is not an integer!".formatted(token.getLexeme()));
-                        if (n.isUnsigned4Bits()) {
-                            yield List.of(new SpriteStatement(parserContext.getHere(), vx.getRegisterIndex(), vy.getRegisterIndex(), n.getValue()));
-                        } else {
-                            throw new OctoAssemblerException("The 'sprite' statement operand '%d' for 'n' does not fit in 4 bits. Must be in the range [0, 15]!".formatted(n.getValue()), n.getSourcePosition());
-                        }
+                }
+                case SPRITE -> {
+                    RegisterLiteralToken vx = parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected 'vx' operand in 'sprite' statement!", instructionStatementNameToken.getSourcePosition(), token -> "The operand '%s' is not a register!".formatted(token.getLexeme()));
+                    RegisterLiteralToken vy = parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected 'vy' operand in 'sprite' statement!", vx.getSourcePosition(), token -> "The operand '%s' is not a register!".formatted(token.getLexeme()));
+                    IntegerLiteralToken n = parserContext.pollTokenOrThrow(IntegerLiteralToken.class, "Expected 'n' operand in 'sprite' statement!", vy.getSourcePosition(), token -> "The operand '%s' is not an integer!".formatted(token.getLexeme()));
+                    if (n.isUnsigned4Bits()) {
+                        yield List.of(new SpriteStatement(parserContext.getHere(), vx.getRegisterIndex(), vy.getRegisterIndex(), n.getValue()));
+                    } else {
+                        throw new OctoAssemblerException("The 'sprite' statement operand '%d' for 'n' does not fit in 4 bits. Must be in the range [0, 15]!".formatted(n.getValue()), n.getSourcePosition());
                     }
-                    case JUMP -> {
-                        Token token = parserContext.pollTokenOrThrow("Expected integer or label operand in 'jump' statement!", instructionStatementNameToken.getSourcePosition());
-                        if (token instanceof IntegerLiteralToken n) {
-                            if (n.isUnsigned12Bits()) {
-                                yield List.of(new JumpStatement(parserContext.getHere(), new AddressArgument.Resolved(n.getValue())));
-                            } else {
-                                throw new OctoAssemblerException("The 'jump' statement target '%d' does not fit in 12 bits!".formatted(n.getValue()), n.getSourcePosition());
-                            }
+                }
+                case JUMP -> {
+                    Token token = parserContext.pollTokenOrThrow("Expected integer or label operand in 'jump' statement!", instructionStatementNameToken.getSourcePosition());
+                    if (token instanceof IntegerLiteralToken n) {
+                        if (n.isUnsigned12Bits()) {
+                            yield List.of(new JumpStatement(parserContext.getHere(), new AddressArgument.Resolved(n.getValue())));
                         } else {
-                            yield List.of(new JumpStatement(parserContext.getHere(), new AddressArgument.NamedLabelReference(token)));
+                            throw new OctoAssemblerException("The 'jump' statement target '%d' does not fit in 12 bits!".formatted(n.getValue()), n.getSourcePosition());
                         }
+                    } else {
+                        yield List.of(new JumpStatement(parserContext.getHere(), new AddressArgument.NamedLabelReference(token)));
                     }
-                    case JUMP0 -> {
-                        Token token = parserContext.pollTokenOrThrow("Expected integer or label operand in 'jump0' statement!", instructionStatementNameToken.getSourcePosition());
-                        if (token instanceof IntegerLiteralToken n) {
-                            if (n.isUnsigned12Bits()) {
-                                yield List.of(new JumpZeroStatement(parserContext.getHere(), new AddressArgument.Resolved(n.getValue())));
-                            } else {
-                                throw new OctoAssemblerException("The 'jump0' statement target '%d' does not fit in 12 bits!".formatted(n.getValue()), n.getSourcePosition());
-                            }
+                }
+                case JUMP0 -> {
+                    Token token = parserContext.pollTokenOrThrow("Expected integer or label operand in 'jump0' statement!", instructionStatementNameToken.getSourcePosition());
+                    if (token instanceof IntegerLiteralToken n) {
+                        if (n.isUnsigned12Bits()) {
+                            yield List.of(new JumpZeroStatement(parserContext.getHere(), new AddressArgument.Resolved(n.getValue())));
                         } else {
-                            yield List.of(new JumpZeroStatement(parserContext.getHere(), new AddressArgument.NamedLabelReference(token)));
+                            throw new OctoAssemblerException("The 'jump0' statement target '%d' does not fit in 12 bits!".formatted(n.getValue()), n.getSourcePosition());
                         }
+                    } else {
+                        yield List.of(new JumpZeroStatement(parserContext.getHere(), new AddressArgument.NamedLabelReference(token)));
                     }
-                    case HIRES -> List.of(new HiresStatement(parserContext.getHere()));
-                    case LORES -> List.of(new LoresStatement(parserContext.getHere()));
-                    case SCROLL_DOWN -> {
-                        IntegerLiteralToken n = parserContext.pollTokenOrThrow(IntegerLiteralToken.class, "Expected integer operand in 'scroll-down' statement!", instructionStatementNameToken.getSourcePosition(), token -> "The operand '%s' is not an integer!".formatted(token.getLexeme()));
-                        if (n.isUnsigned4Bits()) {
-                            yield List.of(new ScrollDownStatement(parserContext.getHere(), n.getValue()));
-                        } else {
-                            throw new OctoAssemblerException("The 'scroll-down' statement operand '%d' for 'n' does not fit in 4 bits. Must be in the range [0, 15]!".formatted(n.getValue()), n.getSourcePosition());
-                        }
+                }
+                case HIRES -> List.of(new HiresStatement(parserContext.getHere()));
+                case LORES -> List.of(new LoresStatement(parserContext.getHere()));
+                case SCROLL_DOWN -> {
+                    IntegerLiteralToken n = parserContext.pollTokenOrThrow(IntegerLiteralToken.class, "Expected integer operand in 'scroll-down' statement!", instructionStatementNameToken.getSourcePosition(), token -> "The operand '%s' is not an integer!".formatted(token.getLexeme()));
+                    if (n.isUnsigned4Bits()) {
+                        yield List.of(new ScrollDownStatement(parserContext.getHere(), n.getValue()));
+                    } else {
+                        throw new OctoAssemblerException("The 'scroll-down' statement operand '%d' for 'n' does not fit in 4 bits. Must be in the range [0, 15]!".formatted(n.getValue()), n.getSourcePosition());
                     }
-                    case SCROLL_LEFT -> List.of(new ScrollLeftStatement(parserContext.getHere()));
-                    case SCROLL_RIGHT -> List.of(new ScrollRightStatement(parserContext.getHere()));
-                    case EXIT -> List.of(new ExitStatement(parserContext.getHere()));
-                    case SAVE_FLAGS -> List.of(new SaveFlagsStatement(parserContext.getHere(), parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected 'vx' operand in 'saveflags' statement!", instructionStatementNameToken.getSourcePosition(), token -> "The operand '%s' is not a register!".formatted(token.getLexeme())).getRegisterIndex()));
-                    case LOAD_FLAGS -> List.of(new LoadFlagsStatement(parserContext.getHere(), parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected 'vx' operand in 'loadflags' statement!", instructionStatementNameToken.getSourcePosition(), token -> "The argument '%s' is not a register!".formatted(token.getLexeme())).getRegisterIndex()));
-                    case PLANE -> {
-                        IntegerLiteralToken n = parserContext.pollTokenOrThrow(IntegerLiteralToken.class, "Expected integer operand in 'plane' statement!", instructionStatementNameToken.getSourcePosition(), token -> "The operand '%s' is not an integer!".formatted(token.getLexeme()));
-                        if (n.isUnsigned4Bits()) {
-                            yield List.of(new SetBitplanesStatement(parserContext.getHere(), n.getValue()));
-                        } else {
-                            throw new OctoAssemblerException("The 'plane' statement operand %d for 'n' does not fit in 4 bits. Must be in the range [0, 15]!".formatted(n.getValue()), n.getSourcePosition());
-                        }
+                }
+                case SCROLL_LEFT -> List.of(new ScrollLeftStatement(parserContext.getHere()));
+                case SCROLL_RIGHT -> List.of(new ScrollRightStatement(parserContext.getHere()));
+                case EXIT -> List.of(new ExitStatement(parserContext.getHere()));
+                case SAVE_FLAGS -> List.of(new SaveFlagsStatement(parserContext.getHere(), parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected 'vx' operand in 'saveflags' statement!", instructionStatementNameToken.getSourcePosition(), token -> "The operand '%s' is not a register!".formatted(token.getLexeme())).getRegisterIndex()));
+                case LOAD_FLAGS -> List.of(new LoadFlagsStatement(parserContext.getHere(), parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected 'vx' operand in 'loadflags' statement!", instructionStatementNameToken.getSourcePosition(), token -> "The argument '%s' is not a register!".formatted(token.getLexeme())).getRegisterIndex()));
+                case PLANE -> {
+                    IntegerLiteralToken n = parserContext.pollTokenOrThrow(IntegerLiteralToken.class, "Expected integer operand in 'plane' statement!", instructionStatementNameToken.getSourcePosition(), token -> "The operand '%s' is not an integer!".formatted(token.getLexeme()));
+                    if (n.isUnsigned4Bits()) {
+                        yield List.of(new SetBitplanesStatement(parserContext.getHere(), n.getValue()));
+                    } else {
+                        throw new OctoAssemblerException("The 'plane' statement operand %d for 'n' does not fit in 4 bits. Must be in the range [0, 15]!".formatted(n.getValue()), n.getSourcePosition());
                     }
-                    case AUDIO -> List.of(new AudioStatement(parserContext.getHere()));
-                    case PITCH -> {
-                        AssignmentOperatorToken assignmentOperatorToken = parserContext.pollTokenOrThrow(AssignmentOperatorToken.class, "Expected assignment operator ':=' in 'pitch' assignment!", instructionStatementNameToken.getSourcePosition(), token -> "Unknown assignment operator '%s' in 'pitch' statement!".formatted(token.getLexeme()));
-                        if (assignmentOperatorToken.getAssignmentOperation() == AssignmentOperation.SET) {
-                            yield List.of(new SetPitchAssignment(parserContext.getHere(), parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected register operand in 'pitch' statement!", assignmentOperatorToken.getSourcePosition(), token -> "The operand '%s' is not a register!".formatted(token.getLexeme())).getRegisterIndex()));
-                        } else {
-                            throw new OctoAssemblerException("Unknown assignment operator '%s' after 'pitch' statement".formatted(assignmentOperatorToken.getLexeme()), assignmentOperatorToken.getSourcePosition());
-                        }
+                }
+                case AUDIO -> List.of(new AudioStatement(parserContext.getHere()));
+                case PITCH -> {
+                    AssignmentOperatorToken assignmentOperatorToken = parserContext.pollTokenOrThrow(AssignmentOperatorToken.class, "Expected assignment operator ':=' in 'pitch' assignment!", instructionStatementNameToken.getSourcePosition(), token -> "Unknown assignment operator '%s' in 'pitch' statement!".formatted(token.getLexeme()));
+                    if (assignmentOperatorToken.getAssignmentOperation() == AssignmentOperation.SET) {
+                        yield List.of(new SetPitchAssignment(parserContext.getHere(), parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected register operand in 'pitch' statement!", assignmentOperatorToken.getSourcePosition(), token -> "The operand '%s' is not a register!".formatted(token.getLexeme())).getRegisterIndex()));
+                    } else {
+                        throw new OctoAssemblerException("Unknown assignment operator '%s' after 'pitch' statement".formatted(assignmentOperatorToken.getLexeme()), assignmentOperatorToken.getSourcePosition());
                     }
-                    case SCROLL_UP -> {
-                        IntegerLiteralToken n = parserContext.pollTokenOrThrow(IntegerLiteralToken.class, "Expected integer operand in 'scroll-up' statement!", instructionStatementNameToken.getSourcePosition(), token -> "The operand '%s' is not an integer!".formatted(token.getLexeme()));
-                        if (n.isUnsigned4Bits()) {
-                            yield List.of(new ScrollUpStatement(parserContext.getHere(), n.getValue()));
-                        } else {
-                            throw new OctoAssemblerException("The 'scroll-up' statement operand '%d' for 'n' does not fit in 4 bits. Must be in the range [0, 15]!".formatted(n.getValue()), n.getSourcePosition());
-                        }
+                }
+                case SCROLL_UP -> {
+                    IntegerLiteralToken n = parserContext.pollTokenOrThrow(IntegerLiteralToken.class, "Expected integer operand in 'scroll-up' statement!", instructionStatementNameToken.getSourcePosition(), token -> "The operand '%s' is not an integer!".formatted(token.getLexeme()));
+                    if (n.isUnsigned4Bits()) {
+                        yield List.of(new ScrollUpStatement(parserContext.getHere(), n.getValue()));
+                    } else {
+                        throw new OctoAssemblerException("The 'scroll-up' statement operand '%d' for 'n' does not fit in 4 bits. Must be in the range [0, 15]!".formatted(n.getValue()), n.getSourcePosition());
                     }
+                }
             };
         };
     }
