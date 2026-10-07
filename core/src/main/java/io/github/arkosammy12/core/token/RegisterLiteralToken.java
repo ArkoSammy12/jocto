@@ -31,7 +31,8 @@ public final class RegisterLiteralToken extends LiteralToken {
         if (lexeme.length() != 2) {
             return Optional.empty();
         }
-        if (lexeme.charAt(0) != 'v') {
+        char first = lexeme.charAt(0);
+        if (first != 'v' && first != 'V') {
             return Optional.empty();
         }
         if (!HEXADECIMAL_DIGITS.contains(lexeme.charAt(1))) {
