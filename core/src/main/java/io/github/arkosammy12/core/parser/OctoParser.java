@@ -430,8 +430,7 @@ public class OctoParser {
 
     private Collection<CodeElement> parseLiteral(ParserContext parserContext, LiteralToken literalToken) throws OctoAssemblerException {
         return switch (literalToken) {
-            case RegisterLiteralToken registerLiteralToken ->
-                    this.parseRegisterLiteral(parserContext, registerLiteralToken);
+            case RegisterLiteralToken registerLiteralToken -> this.parseRegisterLiteral(parserContext, registerLiteralToken);
             case IntegerLiteralToken integerLiteralToken -> {
                 if (integerLiteralToken.is8Bits()) {
                     yield List.of(new ByteElement(parserContext.getHere(), integerLiteralToken.getValue()));
