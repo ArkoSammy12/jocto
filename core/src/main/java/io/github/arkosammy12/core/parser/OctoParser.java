@@ -1,18 +1,18 @@
 package io.github.arkosammy12.core.parser;
 
 import io.github.arkosammy12.core.elements.*;
+import io.github.arkosammy12.core.grammar.Delimiter;
+import io.github.arkosammy12.core.parser.directive.*;
 import io.github.arkosammy12.core.result.OctoAssemblerException;
 import io.github.arkosammy12.core.lexer.SourcePosition;
 import io.github.arkosammy12.core.lexer.SourceStream;
-import io.github.arkosammy12.core.parser.directive.DirectiveDefinition;
-import io.github.arkosammy12.core.parser.directive.ExpandableDirective;
-import io.github.arkosammy12.core.parser.directive.LabelDefinition;
 import io.github.arkosammy12.core.result.OctoParserResult;
 import io.github.arkosammy12.core.token.*;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 public class OctoParser {
 
@@ -32,9 +32,10 @@ public class OctoParser {
             // We start by assuming that we have to reserve the first two bytes for a jump to the 'main' label
             JumpStatement jumpToMainStatement = new JumpStatement(parserContext.getHere(), new AddressArgument.NamedLabelReference(new IdentifierToken("main", new SourcePosition(0, 0))));
             parserContext.incrementHere(jumpToMainStatement);
+            parserContext.addCodeElement(jumpToMainStatement);
 
             while (!parserContext.getTokenStream().isEmpty()) {
-                Optional<Token> optionalToken = parserContext.getTokenStream().poll();
+                Optional<Token> optionalToken = parserContext.pollToken();
                 if (optionalToken.isPresent()) {
                     Token token = optionalToken.get();
                     Collection<? extends CodeElement> codeElements = switch (token) {
@@ -432,7 +433,11 @@ public class OctoParser {
         return switch (literalToken) {
             case RegisterLiteralToken registerLiteralToken -> this.parseRegisterLiteral(parserContext, registerLiteralToken);
             case IntegerLiteralToken integerLiteralToken -> {
-                if (integerLiteralToken.is8Bits()) {
+                // Account for the possibility that this integer literal token came from a ConstDefinition expansion
+                Optional<DirectiveDefinition> directiveDefinition = parserContext.getDirective(integerLiteralToken);
+                if (directiveDefinition.isPresent() && directiveDefinition.get() instanceof ConstDefinition) {
+                    yield parserContext.checkReservedName(integerLiteralToken);
+                } else if (integerLiteralToken.is8Bits()) {
                     yield List.of(new ByteElement(parserContext.getHere(), integerLiteralToken.getValue()));
                 } else {
                     throw new OctoAssemblerException("Raw integer literal '%d' does not fit in 8 bits [-128, 255]".formatted(integerLiteralToken.getValue()), integerLiteralToken.getSourcePosition());
@@ -444,7 +449,7 @@ public class OctoParser {
     }
 
     private Collection<CodeElement> parseAssignmentKeywordToken(ParserContext parserContext, AssignmentKeywordToken assignmentKeywordToken) throws OctoAssemblerException {
-        return (switch (assignmentKeywordToken.getAssignmentKeyword()) {
+        return switch (assignmentKeywordToken.getAssignmentKeyword()) {
             case DELAY -> {
                 if (parserContext.pollTokenOrThrow(AssignmentOperatorToken.class, "Expected assignment operator ':=' after 'delay' assignment!", assignmentKeywordToken.getSourcePosition(), token -> "Unknown assignment operator '%s'!".formatted(token.getLexeme())).getAssignmentOperation() == AssignmentOperation.SET) {
                     yield List.of(new SetDelayTimerAssignment(parserContext.getHere(), parserContext.pollTokenOrThrow(RegisterLiteralToken.class, "Expected 'vx' operand after delay statement!", assignmentKeywordToken.getSourcePosition(), token -> "The operand '%s' is not a register!".formatted(token.getLexeme())).getRegisterIndex()));
@@ -467,7 +472,7 @@ public class OctoParser {
                 }
             }
             default -> parserContext.checkReservedName(assignmentKeywordToken);
-        });
+        };
     }
 
     private Collection<CodeElement> parseRegisterLiteral(ParserContext parserContext, RegisterLiteralToken vx) throws OctoAssemblerException {
@@ -509,20 +514,19 @@ public class OctoParser {
                         throw new OctoAssemblerException("Operand '%d' for 'vx :=' does not fit in 8 bits. Must be in the range [-128, 255]!".formatted(nn.getValue()), nn.getSourcePosition());
                     }
                 }
-                case AssignmentKeywordToken assignmentKeywordToken ->
-                    switch (assignmentKeywordToken.getAssignmentKeyword()) {
-                        case DELAY -> List.of(new SetRegisterToDelayTimerAssignment(parserContext.getHere(), vx.getRegisterIndex()));
-                        case KEY -> List.of(new SetRegisterToKeyAssignment(parserContext.getHere(), vx.getRegisterIndex()));
-                        case RANDOM -> {
-                            IntegerLiteralToken nn = parserContext.pollTokenOrThrow(IntegerLiteralToken.class, "Expected integer operand after 'vx := random' assignment!", vx.getSourcePosition(), token -> "The argument '%s' is not an integer!".formatted(token.getLexeme()));
-                            if (nn.is8Bits()) {
-                                yield List.of(new SetRegisterToRandomAssignment(parserContext.getHere(), vx.getRegisterIndex(), nn.getValue()));
-                            } else {
-                                throw new OctoAssemblerException("Operand '%d' for 'vx := random' does not fit in 8 bits. Must be in the range [-128, 255]!".formatted(nn.getValue()), nn.getSourcePosition());
-                            }
+                case AssignmentKeywordToken assignmentKeywordToken -> switch (assignmentKeywordToken.getAssignmentKeyword()) {
+                    case DELAY -> List.of(new SetRegisterToDelayTimerAssignment(parserContext.getHere(), vx.getRegisterIndex()));
+                    case KEY -> List.of(new SetRegisterToKeyAssignment(parserContext.getHere(), vx.getRegisterIndex()));
+                    case RANDOM -> {
+                        IntegerLiteralToken nn = parserContext.pollTokenOrThrow(IntegerLiteralToken.class, "Expected integer operand after 'vx := random' assignment!", vx.getSourcePosition(), token -> "The argument '%s' is not an integer!".formatted(token.getLexeme()));
+                        if (nn.is8Bits()) {
+                            yield List.of(new SetRegisterToRandomAssignment(parserContext.getHere(), vx.getRegisterIndex(), nn.getValue()));
+                        } else {
+                            throw new OctoAssemblerException("Operand '%d' for 'vx := random' does not fit in 8 bits. Must be in the range [-128, 255]!".formatted(nn.getValue()), nn.getSourcePosition());
                         }
-                        default -> parserContext.checkReservedName(assignmentKeywordToken);
-                    };
+                    }
+                    default -> parserContext.checkReservedName(assignmentKeywordToken);
+                };
                 case Token token -> throw new OctoAssemblerException("Unexpected operand '%s' for 'vx :=' statement".formatted(token.getLexeme()), token.getSourcePosition());
             };
         };
@@ -574,22 +578,131 @@ public class OctoParser {
                 parserContext.addDirectiveDefinition(token, new LabelDefinition(token.getLexeme(), parserContext.getHere()));
                 yield List.of();
             }
-            case ORG -> List.of();
-            case BYTE -> List.of();
-            case CALC -> List.of();
-            case CALL -> List.of();
-            case NEXT -> List.of();
-            case ALIAS -> List.of();
-            case CONST -> List.of();
-            case MACRO -> List.of();
-            case PROTO -> List.of();
-            case ASSERT -> List.of();
-            case UNPACK -> List.of();
-            case MONITOR -> List.of();
-            case POINTER -> List.of();
-            case BREAKPOINT -> List.of();
-            case STRING_MODE -> List.of();
+            case ORG -> {
+                switch (parserContext.pollTokenOrThrow("Expected address value or calculated expression after ':org' directive!", directiveToken.getSourcePosition())) {
+                    case IntegerLiteralToken integerLiteralToken -> {
+                        if (integerLiteralToken.isUnsigned16Bits()) {
+                            parserContext.setHere(integerLiteralToken, integerLiteralToken.getValue());
+                        } else {
+                            throw new OctoAssemblerException("The ':org' argument value '%d' does not fit in 16 bits!".formatted(integerLiteralToken.getValue()), integerLiteralToken.getSourcePosition());
+                        }
+                    }
+                    case DelimiterToken delimiterToken -> {
+                        if (delimiterToken.getDelimiter() == Delimiter.BRACE && delimiterToken.getDelimiterType() == Delimiter.Type.OPENING) {
+                            parserContext.setHere(delimiterToken, toInt32JS(this.evaluateCalcExpression(parserContext, delimiterToken)) & 0xFFFF);
+                        } else {
+                            throw new OctoAssemblerException("Unexpected delimiter token '%s' to begin calculated expression".formatted(delimiterToken.getLexeme()), delimiterToken.getSourcePosition());
+                        }
+                    }
+                    case Token token -> throw new OctoAssemblerException("Unknown ':byte' directive argument '%s'!".formatted(token.getLexeme()), token.getSourcePosition());
+                }
+                yield List.of();
+            }
+            case BYTE -> switch (parserContext.pollTokenOrThrow("Expected byte value or calculated expression after ':byte' directive!", directiveToken.getSourcePosition())) {
+                case IntegerLiteralToken integerLiteralToken -> {
+                    if (integerLiteralToken.is8Bits()) {
+                        yield List.of(new ByteElement(parserContext.getHere(), integerLiteralToken.getValue()));
+                    } else {
+                        throw new OctoAssemblerException("Raw integer literal '%d' does not fit in 8 bits [-128, 255]".formatted(integerLiteralToken.getValue()), integerLiteralToken.getSourcePosition());
+                    }
+                }
+                case DelimiterToken delimiterToken -> {
+                    if (delimiterToken.getDelimiter() == Delimiter.BRACE && delimiterToken.getDelimiterType() == Delimiter.Type.OPENING) {
+                        yield List.of(new ByteElement(parserContext.getHere(), toUInt8JS(this.evaluateCalcExpression(parserContext, delimiterToken))));
+                    } else {
+                        throw new OctoAssemblerException("Unexpected delimiter token '%s' to begin calculated expression".formatted(delimiterToken.getLexeme()), delimiterToken.getSourcePosition());
+                    }
+                }
+                case Token token -> throw new OctoAssemblerException("Unknown ':byte' directive argument '%s'!".formatted(token.getLexeme()), token.getSourcePosition());
+            };
+            case CALC -> {
+                Token calcDirectiveNameToken = parserContext.pollTokenOrThrow("Expected name after ':calc' directive!", directiveToken.getSourcePosition());
+                DelimiterToken delimiterToken = parserContext.pollTokenOrThrow(DelimiterToken.class, "Expected opening '{' to begin calculated expression!", calcDirectiveNameToken.getSourcePosition(), _ -> "Expected opening '{' to begin calculated expression!");
+                if (delimiterToken.getDelimiter() == Delimiter.BRACE && delimiterToken.getDelimiterType() == Delimiter.Type.OPENING) {
+                    parserContext.addDirectiveDefinition(calcDirectiveNameToken, new CalcDefinition(calcDirectiveNameToken.getLexeme(), this.evaluateCalcExpression(parserContext, delimiterToken)));
+                } else {
+                    throw new OctoAssemblerException("Expected opening '{' to begin calculated expression!", delimiterToken.getSourcePosition());
+                }
+                yield List.of();
+            }
+            case CALL -> switch (parserContext.pollTokenOrThrow("Expected 12-bit value or calculated expression after ':call' directive!", directiveToken.getSourcePosition())) {
+                case IntegerLiteralToken integerLiteralToken -> {
+                    if (integerLiteralToken.isUnsigned12Bits()) {
+                        yield List.of(new CallStatement(parserContext.getHere(), new AddressArgument.Resolved(integerLiteralToken.getValue() & 0xFFF)));
+                    } else {
+                        throw new OctoAssemblerException("Operand '%d' for ':call' directive does not fit in 12 bits!".formatted(integerLiteralToken.getValue()), integerLiteralToken.getSourcePosition());
+                    }
+                }
+                case DelimiterToken delimiterToken -> {
+                    if (delimiterToken.getDelimiter() == Delimiter.BRACE && delimiterToken.getDelimiterType() == Delimiter.Type.OPENING) {
+                        yield List.of(new CallStatement(parserContext.getHere(), new AddressArgument.Resolved(toInt32JS(this.evaluateCalcExpression(parserContext, delimiterToken)) & 0xFFF)));
+                    } else {
+                        throw new OctoAssemblerException("Unexpected delimiter token '%s' to begin calculated expression".formatted(delimiterToken.getLexeme()), delimiterToken.getSourcePosition());
+                    }
+                }
+                case Token token -> {
+                    parserContext.checkReservedName(token);
+                    yield List.of(new CallStatement(parserContext.getHere(), new AddressArgument.NamedLabelReference(token)));
+                }
+            };
+            case NEXT -> {
+                Token token = parserContext.pollTokenOrThrow("Expected label name following ':next' directive!", directiveToken.getSourcePosition());
+                parserContext.addDirectiveDefinition(token, new NextDefinition(token.getLexeme(), parserContext.addToHere(token, 1)));
+                yield List.of();
+            }
+            case ALIAS -> {
+                Token aliasNameToken = parserContext.pollTokenOrThrow("Expected name after ':alias' directive!", directiveToken.getSourcePosition());
+                switch (parserContext.pollTokenOrThrow("Expected register or calculated expression argument in 'alias' directive!", aliasNameToken.getSourcePosition())) {
+                    case RegisterLiteralToken registerLiteralToken -> parserContext.addDirectiveDefinition(aliasNameToken, new AliasDefinition(aliasNameToken.getLexeme(), registerLiteralToken.getRegisterIndex()));
+                    case DelimiterToken delimiterToken -> {
+                        if (delimiterToken.getDelimiter() == Delimiter.BRACE && delimiterToken.getDelimiterType() == Delimiter.Type.OPENING) {
+                            int registerIndex = toUInt8JS(this.evaluateCalcExpression(parserContext, delimiterToken));
+                            if (registerIndex >= 0 && registerIndex <= 15) {
+                                parserContext.addDirectiveDefinition(aliasNameToken, new AliasDefinition(aliasNameToken.getLexeme(), registerIndex));
+                            } else {
+                                throw new OctoAssemblerException("Register index argument '%d' for 'alias' directive must be in the range [0, 15]!".formatted(registerIndex), delimiterToken.getSourcePosition());
+                            }
+                        } else {
+                            throw new OctoAssemblerException("Unexpected delimiter token '%s' to begin calculated expression".formatted(delimiterToken.getLexeme()), delimiterToken.getSourcePosition());
+                        }
+                    }
+                    case Token aliasArgumentToken -> throw new OctoAssemblerException("Unexpected argument '%s' for ':alias' directive!".formatted(aliasArgumentToken.getLexeme()), aliasArgumentToken.getSourcePosition());
+                }
+                yield List.of();
+            }
+            case CONST -> {
+                Token constNameToken = parserContext.pollTokenOrThrow("Expected name after ':const' directive!", directiveToken.getSourcePosition());
+                switch (parserContext.pollTokenOrThrow("Expected integer or label argument in ':const' directive!", constNameToken.getSourcePosition())) {
+                    case IntegerLiteralToken integerLiteralToken -> parserContext.addDirectiveDefinition(constNameToken, new ConstDefinition(constNameToken.getLexeme(), integerLiteralToken.getValue()));
+                    case Token constDirectiveNameArgumentToken -> {
+                        Optional<DirectiveDefinition> directiveArgument = parserContext.getDirective(constDirectiveNameArgumentToken);
+                        if (directiveArgument.isPresent()) {
+                            switch (directiveArgument.get()) {
+                                case LabelDefinition labelDefinition -> parserContext.addDirectiveDefinition(constNameToken, new ConstDefinition(constNameToken.getLexeme(), labelDefinition.getAddress()));
+                                case ConstDefinition constDefinition -> parserContext.addDirectiveDefinition(constNameToken, new ConstDefinition(constNameToken.getLexeme(), constDefinition.getValue()));
+                                default -> throw new OctoAssemblerException("Undefined constant name '%s'!".formatted(constDirectiveNameArgumentToken.getLexeme()), constDirectiveNameArgumentToken.getSourcePosition());
+                            }
+                        } else {
+                            throw new OctoAssemblerException("Undefined constant name '%s'!".formatted(constDirectiveNameArgumentToken.getLexeme()), constDirectiveNameArgumentToken.getSourcePosition());
+                        }
+                    }
+                }
+
+                yield List.of();
+            }
+            case MACRO -> throw new OctoAssemblerException("The ':macro' directive is not yet supported!", directiveToken.getSourcePosition());
+            case PROTO -> throw new OctoAssemblerException("The ':proto' directive is not yet supported!", directiveToken.getSourcePosition());
+            case ASSERT -> throw new OctoAssemblerException("The ':assert' directive is not yet supported!", directiveToken.getSourcePosition());
+            case UNPACK -> throw new OctoAssemblerException("The ':unpack' directive is not yet supported!", directiveToken.getSourcePosition());
+            case MONITOR -> throw new OctoAssemblerException("The ':monitor' directive is not yet supported!", directiveToken.getSourcePosition());
+            case POINTER -> throw new OctoAssemblerException("The ':pointer' directive is not yet supported!", directiveToken.getSourcePosition());
+            case BREAKPOINT -> throw new OctoAssemblerException("The ':breakpoint' directive is not yet supported!", directiveToken.getSourcePosition());
+            case STRING_MODE -> throw new OctoAssemblerException("The ':stringmode' directive is not yet supported!", directiveToken.getSourcePosition());
         };
+    }
+
+    private double evaluateCalcExpression(ParserContext parserContext, DelimiterToken delimiterToken) throws OctoAssemblerException {
+        throw new OctoAssemblerException("Calculated expressions are not yet supported!", delimiterToken.getSourcePosition());
     }
 
     private Collection<CodeElement> invertSkipConditions(Collection<CodeElement> codeElements) {
@@ -602,6 +715,38 @@ public class OctoParser {
             }
         }
         return invertedSkips;
+    }
+
+    private static int toUInt8JS(double x) {
+        if (!Double.isFinite(x) || x == 0x0) {
+            return 0;
+        }
+        double narrowed = truncate(x) % 256.0;
+        if (narrowed < 0.0) {
+            narrowed += 256.0;
+        }
+        return (int) narrowed;
+    }
+
+    private static int toInt32JS(double x) {
+        if (!Double.isFinite(x) || x == 0.0) {
+            return 0;
+        }
+        final double MODULUS = 4294967296.0;  // 2^32
+        final double SIGN_BIT = 2147483648.0; // 2^31
+
+        double narrowed = truncate(x) % MODULUS;
+        if (narrowed < 0.0) {
+            narrowed += MODULUS;
+        }
+        if (narrowed >= SIGN_BIT) {
+            narrowed -= MODULUS;
+        }
+        return (int) narrowed;
+    }
+
+    private static double truncate(double x) {
+        return (x < 0) ? Math.ceil(x) : Math.floor(x);
     }
 
     private class ParserContext {
@@ -662,7 +807,8 @@ public class OctoParser {
 
         private void addDirectiveDefinition(Token token, DirectiveDefinition directiveDefinition) throws OctoAssemblerException {
             String name = token.getLexeme();
-            if (this.directiveDefinitions.containsKey(name)) {
+            DirectiveDefinition existingDirective = this.directiveDefinitions.get(name);
+            if (existingDirective != null && !(existingDirective instanceof AliasDefinition) && !(existingDirective instanceof CalcDefinition)) {
                 throw new OctoAssemblerException("Directive name '%s' is already defined!".formatted(name), token.getSourcePosition());
             }
             this.checkReservedName(token);
@@ -684,6 +830,12 @@ public class OctoParser {
             this.internalLabelDefinitions.put(internalLabelKey, addressValue);
         }
 
+        private void setHere(@Nullable Token token, int value) {
+            if (value < 0 || value > 0xFFFF) {
+                throw new IllegalArgumentException("Tried to set 'here' to a negative value or value greater than the 16-bit integer limit!");
+            }
+            this.here = value;
+        }
 
         private int addToHere(@Nullable Token token, int amount) throws OctoAssemblerException {
             int newHere = this.here + amount;
@@ -730,16 +882,7 @@ public class OctoParser {
         }
 
         private Optional<Token> pollToken() {
-            return this.tokenStream.poll()
-                    .flatMap(token -> this.getDirective(token)
-                            .map(directiveDefinition -> {
-                                if (directiveDefinition instanceof ExpandableDirective expandableDirective) {
-                                    this.expandDirective(expandableDirective, token.getSourcePosition());
-                                    return this.pollToken();
-                                } else {
-                                    return Optional.of(token);
-                                }
-                            }).orElse(Optional.of(token)));
+            return this.tokenStream.poll().flatMap(token -> this.resolveToken(token, this::pollToken));
         }
 
         private Token pollTokenOrThrow(String error, SourcePosition sourcePosition) throws OctoAssemblerException {
@@ -757,16 +900,18 @@ public class OctoParser {
         }
 
         private Optional<Token> peekToken() {
-            return this.tokenStream.peek()
-                    .flatMap(token -> this.getDirective(token)
-                            .map(directiveDefinition -> {
-                                if (directiveDefinition instanceof ExpandableDirective expandableDirective) {
-                                    this.expandDirective(expandableDirective, token.getSourcePosition());
-                                    return this.peekToken();
-                                } else {
-                                    return Optional.of(token);
-                                }
-                            }).orElse(Optional.of(token)));
+            return this.tokenStream.peek().flatMap(token -> this.resolveToken(token, this::peekToken));
+        }
+
+        private Optional<Token> resolveToken(Token token, Supplier<Optional<Token>> tokenSupplier) {
+            if (token instanceof IdentifierToken identifierToken) {
+                Optional<DirectiveDefinition> directiveDefinition = this.getDirective(identifierToken);
+                if (directiveDefinition.isPresent() && directiveDefinition.get() instanceof ExpandableDirective expandableDirective) {
+                    this.expandDirective(expandableDirective, identifierToken.getSourcePosition());
+                    return tokenSupplier.get();
+                }
+            }
+            return Optional.of(token);
         }
 
         private void expandDirective(ExpandableDirective expandableDirective, SourcePosition sourcePosition) {
@@ -796,7 +941,7 @@ public class OctoParser {
 
         private Collection<CodeElement> checkReservedName(Token token) throws OctoAssemblerException {
             if (token instanceof ReservedNameToken) {
-                throw new OctoAssemblerException("The name '%s' is reserved and cannot be used as a label!".formatted(token.getLexeme()), token.getSourcePosition());
+                throw new OctoAssemblerException("The name '%s' is reserved and cannot be used as a label or directive name!".formatted(token.getLexeme()), token.getSourcePosition());
             } else {
                 return List.of(new CallStatement(this.here, new AddressArgument.NamedLabelReference(token)));
             }
