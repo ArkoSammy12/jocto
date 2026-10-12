@@ -16,7 +16,20 @@ public class SourceFile {
     }
 
     public SourceFile(List<String> lines) {
-        this.lines = List.copyOf(lines);
+        List<String> l = new ArrayList<>();
+        for (int i = 0; i < lines.size(); i++) {
+            if (i == 0) {
+                String firstLine = lines.get(i);
+                if (!firstLine.isEmpty() && firstLine.charAt(0) == '\uFEFF') {
+                    l.add(firstLine.substring(1));
+                } else {
+                    l.add(firstLine);
+                }
+            } else {
+                l.add(lines.get(i));
+            }
+        }
+        this.lines = List.copyOf(l);
     }
 
     public int getLineSize() {
