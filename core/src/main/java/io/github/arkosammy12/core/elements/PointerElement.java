@@ -23,8 +23,8 @@ public final class PointerElement extends CodeElement implements LabelableElemen
     @Override
     public BytesResult getBytes() {
         return switch (this.addressArgument) {
-            case AddressArgument.Resolved(int address) -> new BytesResult.Data(new byte[] {(byte) 0xF0, (byte) 0x00, (byte)((address >>> 8) & 0xFF), (byte) (address & 0xFF)});
-            case AddressArgument.Unresolved unresolved -> new BytesResult.UnresolvedLabel(unresolved, new byte[] {(byte) 0xF0, (byte) 0x00, (byte) 0x00, (byte) 0x00});
+            case AddressArgument.Resolved(int address) -> new BytesResult.Data(new byte[] {(byte)((address >>> 8) & 0xFF), (byte) (address & 0xFF)});
+            case AddressArgument.Unresolved unresolved -> new BytesResult.UnresolvedLabel(unresolved, new byte[] {(byte) 0x00, (byte) 0x00});
         };
     }
 

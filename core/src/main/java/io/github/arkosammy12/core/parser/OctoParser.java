@@ -678,7 +678,6 @@ public class OctoParser {
                         }
                     }
                 }
-
                 yield List.of();
             }
             case MACRO -> throw new OctoAssemblerException("The ':macro' directive is not yet supported!", directiveToken.getSourcePosition());
@@ -686,7 +685,23 @@ public class OctoParser {
             case ASSERT -> throw new OctoAssemblerException("The ':assert' directive is not yet supported!", directiveToken.getSourcePosition());
             case UNPACK -> throw new OctoAssemblerException("The ':unpack' directive is not yet supported!", directiveToken.getSourcePosition());
             case MONITOR -> throw new OctoAssemblerException("The ':monitor' directive is not yet supported!", directiveToken.getSourcePosition());
-            case POINTER -> throw new OctoAssemblerException("The ':pointer' directive is not yet supported!", directiveToken.getSourcePosition());
+            case POINTER -> switch (parserContext.pollTokenOrThrow("Expected 16 bit value, label, or calculated expression after ':pointer' directive!", directiveToken.getSourcePosition())) {
+                case NumberLiteralToken numberLiteralToken -> {
+                    if (numberLiteralToken.isUnsigned16Bits()) {
+                        yield List.of(new PointerElement(parserContext.getHere(), new AddressArgument.Resolved(numberLiteralToken.getIntValue())));
+                    } else {
+                        throw new OctoAssemblerException("Raw integer literal '%d' does not fit in 8 bits [-128, 255]".formatted(numberLiteralToken.getIntValue()), numberLiteralToken.getSourcePosition());
+                    }
+                }
+                case Token token -> {
+                    if (token instanceof DelimiterToken delimiterToken && delimiterToken.getDelimiter() == Delimiter.BRACE && delimiterToken.getDelimiterType() == Delimiter.Type.OPENING) {
+                        yield List.of(new PointerElement(parserContext.getHere(), new AddressArgument.Resolved(toInt32JS(this.parseCalcExpression(parserContext, delimiterToken)) & 0xFFFF)));
+                    } else {
+                        parserContext.checkReservedName(token);
+                        yield List.of(new PointerElement(parserContext.getHere(), new AddressArgument.NamedLabelReference(token)));
+                    }
+                }
+            };
             case BREAKPOINT -> throw new OctoAssemblerException("The ':breakpoint' directive is not yet supported!", directiveToken.getSourcePosition());
             case STRING_MODE -> throw new OctoAssemblerException("The ':stringmode' directive is not yet supported!", directiveToken.getSourcePosition());
         };
@@ -1028,22 +1043,8 @@ public class OctoParser {
             return peekedToken;
         }
 
-        private Optional<Token> resolveToken(Token token) {
-            if (token instanceof IdentifierToken identifierToken) {
-                Optional<DirectiveDefinition> directiveDefinition = this.getDirective(identifierToken);
-                if (directiveDefinition.isPresent() && directiveDefinition.get() instanceof ExpandableDirective expandableDirective) {
-                    this.expandDirective(expandableDirective, identifierToken.getSourcePosition());
-                    return this.pollToken();
-                }
-            }
-            return Optional.of(token);
-        }
-
-        private void expandDirective(ExpandableDirective expandableDirective, SourcePosition sourcePosition) {
-            List<Token> directiveTokens = expandableDirective.expand(this.here, sourcePosition);
-            for (int i = directiveTokens.size() - 1; i >= 0; i--) {
-                this.tokenStream.offerFront(directiveTokens.get(i));
-            }
+        private Token peekTokenOrThrow(String error, SourcePosition sourcePosition) throws OctoAssemblerException {
+            return this.peekToken().orElseThrow(() -> new OctoAssemblerException(error, sourcePosition));
         }
 
         @SuppressWarnings("unchecked")
@@ -1062,6 +1063,24 @@ public class OctoParser {
                 this.pollToken();
                 return token;
             });
+        }
+
+        private Optional<Token> resolveToken(Token token) {
+            if (token instanceof IdentifierToken identifierToken) {
+                Optional<DirectiveDefinition> directiveDefinition = this.getDirective(identifierToken);
+                if (directiveDefinition.isPresent() && directiveDefinition.get() instanceof ExpandableDirective expandableDirective) {
+                    this.expandDirective(expandableDirective, identifierToken.getSourcePosition());
+                    return this.pollToken();
+                }
+            }
+            return Optional.of(token);
+        }
+
+        private void expandDirective(ExpandableDirective expandableDirective, SourcePosition sourcePosition) {
+            List<Token> directiveTokens = expandableDirective.expand(this.here, sourcePosition);
+            for (int i = directiveTokens.size() - 1; i >= 0; i--) {
+                this.tokenStream.offerFront(directiveTokens.get(i));
+            }
         }
 
         private Collection<CodeElement> checkReservedName(Token token) throws OctoAssemblerException {
