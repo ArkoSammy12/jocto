@@ -43,7 +43,7 @@ public class OctoCodegen {
                         LabelDefinition labelDefinition = optionalLabelDefinition.get();
                         switch (labelableElement.resolve(labelDefinition.getAddress())) {
                             case LabelResolveResult.Ok _ -> {}
-                            case LabelResolveResult.AlreadyResolved _ -> throw new OctoAssemblerException("The label '%s' has already been defined!".formatted(labelDefinition.getAddress()), unresolvedAddress.getSourcePosition());
+                            case LabelResolveResult.AlreadyResolved _ -> /*throw new OctoAssemblerException("The label '%s' has already been defined!".formatted(labelDefinition.getAddress()), unresolvedAddress.getSourcePosition());*/ {}
                             case LabelResolveResult.LabelResolveError(String error, SourcePosition sourcePosition) -> throw new OctoAssemblerException(error, sourcePosition);
                         }
                     }
@@ -54,7 +54,7 @@ public class OctoCodegen {
                         int address = optionalInternalAddress.get();
                         switch (labelableElement.resolve(address)) {
                             case LabelResolveResult.Ok _ -> {}
-                            case LabelResolveResult.AlreadyResolved _ -> throw new OctoAssemblerException("The internal label '%s' has already been defined!".formatted(internalLabelKey), unresolvedAddress.getSourcePosition());
+                            case LabelResolveResult.AlreadyResolved _ -> /*throw new OctoAssemblerException("The internal label '%s' has already been defined!".formatted(internalLabelKey), unresolvedAddress.getSourcePosition());*/ {}
                             case LabelResolveResult.LabelResolveError(String error, SourcePosition sourcePosition) -> throw new OctoAssemblerException(error, sourcePosition);
                         }
                     }
@@ -63,7 +63,7 @@ public class OctoCodegen {
         }
         switch (codeElement.getBytes()) {
             case BytesResult.Data(byte[] bytes) -> codegenContext.addBytes(bytes, codeElement.getOffset());
-            case BytesResult.UnresolvedLabel(AddressArgument.Unresolved unresolved) -> throw switch (unresolved) {
+            case BytesResult.UnresolvedLabel(AddressArgument.Unresolved unresolved, _) -> throw switch (unresolved) {
                 case AddressArgument.NamedLabelReference(Token token) -> new OctoAssemblerException("Unresolved label '%s'".formatted(token.getLexeme()), token.getSourcePosition());
                 case AddressArgument.InternalLabelReference(InternalLabelKey internalLabelKey) -> new OctoAssemblerException("Unresolved internal label '%s'".formatted(internalLabelKey), internalLabelKey.sourcePositionKey());
             };

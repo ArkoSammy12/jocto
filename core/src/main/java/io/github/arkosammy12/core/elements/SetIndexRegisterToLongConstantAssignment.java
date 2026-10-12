@@ -24,7 +24,7 @@ public final class SetIndexRegisterToLongConstantAssignment extends Assignment i
     public BytesResult getBytes() {
         return switch (this.addressArgument) {
             case AddressArgument.Resolved(int nnnn) -> new BytesResult.Data(new byte[] {(byte) 0xF0, (byte) 0x00, (byte)((nnnn >>> 8) & 0xFF), (byte) (nnnn & 0xFF)});
-            case AddressArgument.Unresolved unresolved -> new BytesResult.UnresolvedLabel(unresolved);
+            case AddressArgument.Unresolved unresolved -> new BytesResult.UnresolvedLabel(unresolved, new byte[] {(byte) 0xF0, (byte) 0x00, (byte) 0x00, (byte) 0x00});
         };
     }
 

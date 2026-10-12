@@ -24,7 +24,7 @@ public final class SetIndexRegisterToConstantAssignment extends Assignment imple
     public BytesResult getBytes() {
         return switch (this.addressArgument) {
             case AddressArgument.Resolved(int nnn) -> new BytesResult.Data(fromNNN(0xA, nnn));
-            case AddressArgument.Unresolved unresolved -> new BytesResult.UnresolvedLabel(unresolved);
+            case AddressArgument.Unresolved unresolved -> new BytesResult.UnresolvedLabel(unresolved, fromNNN(0xA, 0x000));
         };
     }
 

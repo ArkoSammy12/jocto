@@ -24,7 +24,7 @@ public final class JumpZeroStatement extends Statement implements LabelableEleme
     public BytesResult getBytes() {
         return switch (this.addressArgument) {
             case AddressArgument.Resolved(int nnn) -> new BytesResult.Data(fromNNN(0xB, nnn));
-            case AddressArgument.Unresolved unresolved -> new BytesResult.UnresolvedLabel(unresolved);
+            case AddressArgument.Unresolved unresolved -> new BytesResult.UnresolvedLabel(unresolved, fromNNN(0xB, 0x000));
         };
     }
 

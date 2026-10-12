@@ -24,7 +24,7 @@ public final class JumpStatement extends Statement implements LabelableElement {
     public BytesResult getBytes() {
         return switch (this.addressArgument) {
             case AddressArgument.Resolved(int nnn) -> new BytesResult.Data(fromNNN(0x1, nnn));
-            case AddressArgument.Unresolved unresolved -> new BytesResult.UnresolvedLabel(unresolved);
+            case AddressArgument.Unresolved unresolved -> new BytesResult.UnresolvedLabel(unresolved, fromNNN(0x1, 0x000));
         };
     }
 

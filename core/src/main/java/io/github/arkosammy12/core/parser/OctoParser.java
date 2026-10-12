@@ -759,8 +759,7 @@ public class OctoParser {
                     return Math.floor(this.evaluateCalcExpression(parserContext));
                 }
                 case AT -> {
-                    // TODO: Implement
-                    throw new OctoAssemblerException("The calc operator '@' is not yet supported!", calcOperatorToken.getSourcePosition());
+                    return (int) parserContext.getROMByte(toInt32JS(this.evaluateCalcExpression(parserContext))) & 0xFF;
                 }
             }
         }
@@ -1071,6 +1070,36 @@ public class OctoParser {
             } else {
                 return List.of(new CallStatement(this.here, new AddressArgument.NamedLabelReference(token)));
             }
+        }
+
+        private byte getROMByte(int address) {
+            address &= 0xFFFF;
+            for (CodeElement codeElement : this.codeElements) {
+                int codeElementOffset = codeElement.getOffset();
+                if (address >= codeElementOffset && address < codeElementOffset + codeElement.getSizeInBytes()) {
+                    int offsetIntoOpcode = address - codeElementOffset;
+                    if (codeElement instanceof LabelableElement labelableElement) {
+                        switch (labelableElement.getAddressArgument()) {
+                            case AddressArgument.Resolved _ -> {}
+                            case AddressArgument.Unresolved unresolved -> {
+                                switch (unresolved) {
+                                    case AddressArgument.NamedLabelReference namedLabelReference -> this.getDirective(namedLabelReference.token())
+                                        .map(directive -> {
+                                            if (directive instanceof LabelDefinition labelDefinition) {
+                                                return labelDefinition;
+                                            } else {
+                                                return null;
+                                            }
+                                        }).ifPresent(labelDefinition -> labelableElement.resolve(labelDefinition.getAddress()));
+                                    case AddressArgument.InternalLabelReference internalLabelReference -> Optional.ofNullable(this.internalLabelDefinitions.get(internalLabelReference.internalLabelKey())).ifPresent(labelableElement::resolve);
+                                }
+                            }
+                        }
+                    }
+                    return codeElement.getBytes().getBytes()[offsetIntoOpcode];
+                }
+            }
+            return (byte) 0x00;
         }
 
     }
