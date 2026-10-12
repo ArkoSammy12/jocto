@@ -12,7 +12,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 import static io.github.arkosammy12.core.token.FloatLiteralToken.toInt32JS;
 import static io.github.arkosammy12.core.token.FloatLiteralToken.toUInt8JS;
@@ -1007,7 +1006,7 @@ public class OctoParser {
         }
 
         private Optional<Token> pollToken() {
-            return this.tokenStream.poll().flatMap(token -> this.resolveToken(token, this::pollToken));
+            return this.tokenStream.poll().flatMap(this::resolveToken);
         }
 
         private Token pollTokenOrThrow(String error, SourcePosition sourcePosition) throws OctoAssemblerException {
@@ -1025,15 +1024,17 @@ public class OctoParser {
         }
 
         private Optional<Token> peekToken() {
-            return this.tokenStream.peek().flatMap(token -> this.resolveToken(token, this::peekToken));
+            Optional<Token> peekedToken = this.pollToken();
+            peekedToken.ifPresent(this.tokenStream::offerFront);
+            return peekedToken;
         }
 
-        private Optional<Token> resolveToken(Token token, Supplier<Optional<Token>> tokenSupplier) {
+        private Optional<Token> resolveToken(Token token) {
             if (token instanceof IdentifierToken identifierToken) {
                 Optional<DirectiveDefinition> directiveDefinition = this.getDirective(identifierToken);
                 if (directiveDefinition.isPresent() && directiveDefinition.get() instanceof ExpandableDirective expandableDirective) {
                     this.expandDirective(expandableDirective, identifierToken.getSourcePosition());
-                    return tokenSupplier.get();
+                    return this.pollToken();
                 }
             }
             return Optional.of(token);
