@@ -1,6 +1,12 @@
 package io.github.arkosammy12.core.parser.directive;
 
-public final class CalcDefinition extends DirectiveDefinition {
+import io.github.arkosammy12.core.lexer.SourcePosition;
+import io.github.arkosammy12.core.token.FloatLiteralToken;
+import io.github.arkosammy12.core.token.Token;
+
+import java.util.List;
+
+public final class CalcDefinition extends DirectiveDefinition implements ExpandableDirective {
 
     private final double value;
 
@@ -13,4 +19,8 @@ public final class CalcDefinition extends DirectiveDefinition {
         return this.value;
     }
 
+    @Override
+    public List<Token> expand(int currentOffset, SourcePosition sourcePosition) {
+        return List.of(new FloatLiteralToken(this.value, this.name, sourcePosition));
+    }
 }

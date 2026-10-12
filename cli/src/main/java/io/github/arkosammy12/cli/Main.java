@@ -37,8 +37,6 @@ public class Main {
                 :alias check-result v9
                 :alias shifted-result v8
                 
-                
-                
                 : pixel
                 	0b10000000
                 
