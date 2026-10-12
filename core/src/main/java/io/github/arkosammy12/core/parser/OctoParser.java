@@ -797,7 +797,7 @@ public class OctoParser {
                     return toInt32JS(value) << toInt32JS(this.evaluateCalcExpression(parserContext));
                 }
                 case RIGHT_SHIFT -> {
-                    return toInt32JS(value) >>> toInt32JS(this.evaluateCalcExpression(parserContext));
+                    return toInt32JS(value) >> toInt32JS(this.evaluateCalcExpression(parserContext));
                 }
                 case POW -> {
                     return Math.pow(value, this.evaluateCalcExpression(parserContext));
