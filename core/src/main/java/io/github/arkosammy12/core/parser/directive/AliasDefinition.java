@@ -15,6 +15,10 @@ public final class AliasDefinition extends DirectiveDefinition implements Expand
         this.registerIndex = registerIndex;
     }
 
+    public int getRegisterIndex() {
+        return this.registerIndex;
+    }
+
     @Override
     public List<Token> expand(int currentOffset, SourcePosition sourcePosition) {
         return List.of(new RegisterLiteralToken(this.registerIndex, this.name, sourcePosition));

@@ -683,7 +683,59 @@ public class OctoParser {
             case MACRO -> throw new OctoAssemblerException("The ':macro' directive is not yet supported!", directiveToken.getSourcePosition());
             case PROTO -> throw new OctoAssemblerException("The ':proto' directive is not yet supported!", directiveToken.getSourcePosition());
             case ASSERT -> throw new OctoAssemblerException("The ':assert' directive is not yet supported!", directiveToken.getSourcePosition());
-            case UNPACK -> throw new OctoAssemblerException("The ':unpack' directive is not yet supported!", directiveToken.getSourcePosition());
+            case UNPACK -> {
+                Token nibbleOrLongToken = parserContext.pollTokenOrThrow("Expected nibble or 'long' argument in ':unpack' directive!", directiveToken.getSourcePosition());
+                Token labelToken = parserContext.pollTokenOrThrow("Expected label argument in ':unpack' directive!", nibbleOrLongToken.getSourcePosition());
+                parserContext.checkReservedName(labelToken);
+
+                int highRegisterIndex = parserContext.getDirective("unpack-hi").map(directiveDefinition -> {
+                    if (directiveDefinition instanceof AliasDefinition aliasDefinition) {
+                        return aliasDefinition;
+                    } else {
+                        return null;
+                    }
+                }).map(AliasDefinition::getRegisterIndex).orElse(0);
+
+                int lowRegisterIndex = parserContext.getDirective("unpack-lo").map(directiveDefinition -> {
+                    if (directiveDefinition instanceof AliasDefinition aliasDefinition) {
+                        return aliasDefinition;
+                    } else {
+                        return null;
+                    }
+                }).map(AliasDefinition::getRegisterIndex).orElse(1);
+
+                AddressArgument addressArgument = switch (labelToken) {
+                    case NumberLiteralToken numberLiteralToken -> {
+                        if (numberLiteralToken.isUnsigned16Bits()) {
+                            yield new AddressArgument.Resolved(numberLiteralToken.getIntValue());
+                        } else {
+                            throw new OctoAssemblerException("The ':unpack' directive argument '%d' does not fit in 16 bits!".formatted(numberLiteralToken.getIntValue()), numberLiteralToken.getSourcePosition());
+                        }
+                    }
+                    case Token token -> {
+                        parserContext.checkReservedName(token);
+                        yield new AddressArgument.NamedLabelReference(token);
+                    }
+                };
+
+                yield switch (nibbleOrLongToken) {
+                    case NumberLiteralToken numberLiteralToken -> {
+                        if (numberLiteralToken.isUnsigned4Bits()) {
+                            yield List.of(new UnpackElement(parserContext.getHere(), highRegisterIndex, lowRegisterIndex, numberLiteralToken.getIntValue(), addressArgument));
+                        } else {
+                            throw new OctoAssemblerException("The ':unpack' directive operand %d does not fit in 4 bits. Must be in the range [0, 15]!".formatted(numberLiteralToken.getIntValue()), numberLiteralToken.getSourcePosition());
+                        }
+                    }
+                    case AssignmentOnlyKeywordToken assignmentOnlyKeywordToken -> {
+                        if (assignmentOnlyKeywordToken.getAssignmentKeyword() == AssignmentKeyword.LONG) {
+                            yield List.of(new UnpackElement(parserContext.getHere(), highRegisterIndex, lowRegisterIndex, addressArgument));
+                        } else {
+                            throw new OctoAssemblerException("Unexpected ':unpack' argument keyword '%s'!".formatted(assignmentOnlyKeywordToken.getLexeme()), assignmentOnlyKeywordToken.getSourcePosition());
+                        }
+                    }
+                    case Token token -> throw new OctoAssemblerException("Unexpected ':unpack' argument '%s'!".formatted(token.getLexeme()), token.getSourcePosition());
+                };
+            }
             case MONITOR -> throw new OctoAssemblerException("The ':monitor' directive is not yet supported!", directiveToken.getSourcePosition());
             case POINTER -> switch (parserContext.pollTokenOrThrow("Expected 16 bit value, label, or calculated expression after ':pointer' directive!", directiveToken.getSourcePosition())) {
                 case NumberLiteralToken numberLiteralToken -> {
@@ -911,7 +963,11 @@ public class OctoParser {
         }
 
         private Optional<DirectiveDefinition> getDirective(Token token) {
-            return Optional.ofNullable(this.directiveDefinitions.get(token.getLexeme()));
+            return this.getDirective(token.getLexeme());
+        }
+
+        private Optional<DirectiveDefinition> getDirective(String name) {
+            return Optional.ofNullable(this.directiveDefinitions.get(name));
         }
 
         public Collection<CodeElement> getCodeElements() {

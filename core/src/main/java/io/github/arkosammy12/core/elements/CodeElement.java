@@ -1,6 +1,6 @@
 package io.github.arkosammy12.core.elements;
 
-public abstract sealed class CodeElement permits InstructionElement, ByteElement, PointerElement {
+public abstract sealed class CodeElement permits ByteElement, InstructionElement, PointerElement, UnpackElement {
 
     protected final int offset;
 
