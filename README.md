@@ -35,7 +35,7 @@ To build the project, clone or download the repository and run the following fro
 .\mvnw clean package
 ```
 
-## macOS/Linus
+## macOS/Linux
 
 ```
 ./mvnw clean package
