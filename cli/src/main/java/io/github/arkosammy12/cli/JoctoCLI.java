@@ -71,8 +71,7 @@ public final class JoctoCLI implements Callable<Integer> {
                 yield 0;
             }
             case OctoAssemblerResult result -> {
-                IO.println("Failed to assemble input source file!");
-                IO.println(result);
+                IO.println("Failed to assemble input source file!\nAssembler result: %s".formatted(result));
                 yield 1;
             }
         };
