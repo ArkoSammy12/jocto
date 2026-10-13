@@ -70,7 +70,10 @@ public final class JoctoCLI implements Callable<Integer> {
                 IO.println("Assembled binary has been written to '%s'".formatted(outputPath));
                 yield 0;
             }
-            default -> 1;
+            default -> {
+                IO.println("Failed to assemble input source file!");
+                yield 1;
+            }
         };
     }
 
