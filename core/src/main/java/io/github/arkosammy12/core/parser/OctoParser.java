@@ -584,6 +584,11 @@ public class OctoParser {
 
     private Collection<CodeElement> parseDirective(ParserContext parserContext, DirectiveToken directiveToken) throws OctoAssemblerException {
         return switch (directiveToken.getDirective()) {
+            case PROTO -> {
+                // Deprecated directive. Just discard the following token
+                parserContext.pollToken();
+                yield List.of();
+            }
             case LABEL_DEFINITION -> {
                 Token labelNameToken = parserContext.pollTokenOrThrow("Expected label name following ':' directive!", directiveToken.getSourcePosition());
                 parserContext.addDirectiveDefinition(labelNameToken, new LabelDefinition(labelNameToken.getLexeme(), parserContext.getHere()));
@@ -738,7 +743,6 @@ public class OctoParser {
                 };
             }
             case MACRO -> throw new OctoAssemblerException("The ':macro' directive is not yet supported!", directiveToken.getSourcePosition());
-            case PROTO -> throw new OctoAssemblerException("The ':proto' directive is not yet supported!", directiveToken.getSourcePosition());
             case ASSERT -> throw new OctoAssemblerException("The ':assert' directive is not yet supported!", directiveToken.getSourcePosition());
             case MONITOR -> throw new OctoAssemblerException("The ':monitor' directive is not yet supported!", directiveToken.getSourcePosition());
             case BREAKPOINT -> throw new OctoAssemblerException("The ':breakpoint' directive is not yet supported!", directiveToken.getSourcePosition());
