@@ -681,7 +681,7 @@ public class OctoParser {
                     if (numberLiteralToken.isUnsigned16Bits()) {
                         yield List.of(new PointerElement(parserContext.getHere(), new AddressArgument.Resolved(numberLiteralToken.getIntValue())));
                     } else {
-                        throw new OctoAssemblerException("Number argument '%d' does not fit in 8 bits [-128, 255]".formatted(numberLiteralToken.getIntValue()), numberLiteralToken.getSourcePosition());
+                        throw new OctoAssemblerException("Number argument '%d' does not fit in 16 bits!".formatted(numberLiteralToken.getIntValue()), numberLiteralToken.getSourcePosition());
                     }
                 }
                 case Token token -> {
