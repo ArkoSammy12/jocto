@@ -69,6 +69,10 @@ public class OctoParser {
             if (actualToken.isEmpty()) {
                 return List.of();
             } else {
+                if (actualToken.get().getSourcePosition().row() == 32) {
+                    int a = 1;
+                }
+
                 return switch (actualToken.get()) {
                     case IfBlockKeywordToken ifBlockKeywordToken -> this.parseIfBlockKeywordToken(parserContext, ifBlockKeywordToken);
                     case LoopBlockKeywordToken loopBlockKeywordToken -> this.parseLoopBlockKeywordToken(parserContext, loopBlockKeywordToken);
@@ -97,10 +101,7 @@ public class OctoParser {
                         // HERE is pointing to the skipped instruction, which is surrounded by the if-then block
                         List<CodeElement> ifThenBlockElements = new ArrayList<>();
                         while (ifThenBlockElements.isEmpty() && !parserContext.getTokenStream().isEmpty()) {
-                            Optional<Token> ifThenBlockToken = parserContext.pollToken();
-                            if (ifThenBlockToken.isPresent()) {
-                                ifThenBlockElements.addAll(this.parseTopLevel(parserContext));
-                            }
+                            ifThenBlockElements.addAll(this.parseTopLevel(parserContext));
                         }
                         ifBlockElements.addAll(ifThenBlockElements);
                         yield ifBlockElements;
