@@ -1,12 +1,6 @@
 package io.github.arkosammy12.core.parser.directive;
 
-import io.github.arkosammy12.core.lexer.SourcePosition;
-import io.github.arkosammy12.core.token.IntegerLiteralToken;
-import io.github.arkosammy12.core.token.Token;
-
-import java.util.List;
-
-public final class ConstDefinition extends DirectiveDefinition implements ExpandableDirective {
+public final class ConstDefinition extends DirectiveDefinition implements ConstantDirectiveDefinition {
 
     private final int value;
 
@@ -20,8 +14,18 @@ public final class ConstDefinition extends DirectiveDefinition implements Expand
     }
 
     @Override
-    public List<Token> expand(int currentOffset, SourcePosition sourcePosition) {
-        return List.of(new IntegerLiteralToken(this.value, this.name, sourcePosition));
+    public int getInt32Value() {
+        return this.value;
+    }
+
+    @Override
+    public int getUInt8Value() {
+        return this.value;
+    }
+
+    @Override
+    public double getDoubleValue() {
+        return this.value;
     }
 
 }

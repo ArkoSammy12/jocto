@@ -1,12 +1,9 @@
 package io.github.arkosammy12.core.parser.directive;
 
-import io.github.arkosammy12.core.lexer.SourcePosition;
-import io.github.arkosammy12.core.token.FloatLiteralToken;
-import io.github.arkosammy12.core.token.Token;
+import static io.github.arkosammy12.core.token.FloatLiteralToken.toInt32JS;
+import static io.github.arkosammy12.core.token.FloatLiteralToken.toUInt8JS;
 
-import java.util.List;
-
-public final class CalcDefinition extends DirectiveDefinition implements ExpandableDirective {
+public final class CalcDefinition extends DirectiveDefinition implements ConstantDirectiveDefinition {
 
     private final double value;
 
@@ -20,7 +17,18 @@ public final class CalcDefinition extends DirectiveDefinition implements Expanda
     }
 
     @Override
-    public List<Token> expand(int currentOffset, SourcePosition sourcePosition) {
-        return List.of(new FloatLiteralToken(this.value, this.name, sourcePosition));
+    public int getInt32Value() {
+        return toInt32JS(this.value);
     }
+
+    @Override
+    public int getUInt8Value() {
+        return toUInt8JS(this.value);
+    }
+
+    @Override
+    public double getDoubleValue() {
+        return this.value;
+    }
+
 }

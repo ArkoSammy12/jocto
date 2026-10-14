@@ -4,8 +4,8 @@ import io.github.arkosammy12.core.parser.AddressArgument;
 import io.github.arkosammy12.core.parser.InternalLabelKey;
 import io.github.arkosammy12.core.token.Token;
 
-import static io.github.arkosammy12.core.token.NumberLiteralToken.isUnsigned12Bits;
-import static io.github.arkosammy12.core.token.NumberLiteralToken.isUnsigned16Bits;
+import static io.github.arkosammy12.core.token.FloatLiteralToken.isUnsigned12Bits;
+import static io.github.arkosammy12.core.token.FloatLiteralToken.isUnsigned16Bits;
 
 public final class UnpackElement extends CodeElement implements LabelableElement {
 

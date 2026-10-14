@@ -4,7 +4,7 @@ import io.github.arkosammy12.core.parser.AddressArgument;
 import io.github.arkosammy12.core.parser.InternalLabelKey;
 import io.github.arkosammy12.core.token.Token;
 
-import static io.github.arkosammy12.core.token.IntegerLiteralToken.isUnsigned12Bits;
+import static io.github.arkosammy12.core.token.FloatLiteralToken.isUnsigned12Bits;
 
 public final class SetIndexRegisterToConstantAssignment extends Assignment implements LabelableElement {
 

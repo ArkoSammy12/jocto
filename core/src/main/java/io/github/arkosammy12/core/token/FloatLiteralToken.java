@@ -4,7 +4,7 @@ import io.github.arkosammy12.core.lexer.SourcePosition;
 
 import java.util.Optional;
 
-public final class FloatLiteralToken extends NumberLiteralToken {
+public final class FloatLiteralToken extends LiteralToken {
 
     private final double value;
 
@@ -13,13 +13,7 @@ public final class FloatLiteralToken extends NumberLiteralToken {
         this.value = value;
     }
 
-    @Override
-    public int getIntValue() {
-        return toInt32JS(this.value);
-    }
-
-    @Override
-    public double getDoubleValue() {
+    public double getValue() {
         return this.value;
     }
 
@@ -34,6 +28,14 @@ public final class FloatLiteralToken extends NumberLiteralToken {
         } catch (NumberFormatException _) {
             return Optional.empty();
         }
+    }
+
+    public static boolean isUnsigned12Bits(int value) {
+        return value >= 0 && value <= 0xFFF;
+    }
+
+    public static boolean isUnsigned16Bits(int value) {
+        return value >= 0 && value <= 0xFFFF;
     }
 
     public static int toUInt8JS(double x) {
