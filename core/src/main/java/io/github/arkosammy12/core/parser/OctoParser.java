@@ -69,10 +69,6 @@ public class OctoParser {
             if (actualToken.isEmpty()) {
                 return List.of();
             } else {
-                if (actualToken.get().getSourcePosition().row() == 32) {
-                    int a = 1;
-                }
-
                 return switch (actualToken.get()) {
                     case IfBlockKeywordToken ifBlockKeywordToken -> this.parseIfBlockKeywordToken(parserContext, ifBlockKeywordToken);
                     case LoopBlockKeywordToken loopBlockKeywordToken -> this.parseLoopBlockKeywordToken(parserContext, loopBlockKeywordToken);
