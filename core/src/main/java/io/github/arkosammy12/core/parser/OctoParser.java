@@ -922,7 +922,7 @@ public class OctoParser {
         private final Stack<InternalLabelKey> ifStack = new Stack<>();
         private final Stack<InternalLabelKey> loopStack = new Stack<>();
         private int here = programStart;
-        private long tokenCounter = 0;
+        private long internalLabelKeyCounter = 0;
         private boolean foundMainLabel;
 
         private ParserContext(SourceStream<Token> tokenStream) {
@@ -935,10 +935,6 @@ public class OctoParser {
 
         private int getHere() {
             return this.here;
-        }
-
-        private long getTokenCounter() {
-            return this.tokenCounter;
         }
 
         private Optional<DirectiveDefinition> getDirective(Token token) {
@@ -1012,7 +1008,12 @@ public class OctoParser {
         }
 
         private InternalLabelKey createInternalLabelKey(SourcePosition sourcePositionKey) {
-            return new InternalLabelKey(this.getTokenCounter(), this.getHere(), sourcePositionKey);
+            InternalLabelKey internalLabelKey = new InternalLabelKey(this.internalLabelKeyCounter, this.getHere(), sourcePositionKey);
+            this.internalLabelKeyCounter++;
+            if (this.internalLabelKeyCounter < 0) {
+                throw new IllegalStateException("Exceeded maximum valid token counter value of '%d'!".formatted(Long.MAX_VALUE));
+            }
+            return internalLabelKey;
         }
 
         private void setHere(int value) {
@@ -1067,14 +1068,7 @@ public class OctoParser {
         }
 
         private Optional<Token> pollToken() {
-            Optional<Token> token = this.tokenStream.poll();
-            if (token.isPresent()) {
-                this.tokenCounter++;
-                if (this.tokenCounter < 0) {
-                    throw new IllegalStateException("Exceeded maximum valid token counter value of '%d'!".formatted(Long.MAX_VALUE));
-                }
-            }
-            return token;
+            return this.tokenStream.poll();
         }
 
         private Token pollTokenOrThrow(String error, SourcePosition sourcePosition) throws OctoAssemblerException {
