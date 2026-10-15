@@ -925,6 +925,25 @@ public class OctoParser {
         private long internalLabelKeyCounter = 0;
         private boolean foundMainLabel;
 
+        {
+            this.directiveDefinitions.put("OCTO_KEY_1", new ConstDefinition("OCTO_KEY_1", 1));
+            this.directiveDefinitions.put("OCTO_KEY_2", new ConstDefinition("OCTO_KEY_2", 2));
+            this.directiveDefinitions.put("OCTO_KEY_3", new ConstDefinition("OCTO_KEY_3", 3));
+            this.directiveDefinitions.put("OCTO_KEY_4", new ConstDefinition("OCTO_KEY_4", 12));
+            this.directiveDefinitions.put("OCTO_KEY_Q", new ConstDefinition("OCTO_KEY_Q", 4));
+            this.directiveDefinitions.put("OCTO_KEY_W", new ConstDefinition("OCTO_KEY_W", 5));
+            this.directiveDefinitions.put("OCTO_KEY_E", new ConstDefinition("OCTO_KEY_E", 6));
+            this.directiveDefinitions.put("OCTO_KEY_R", new ConstDefinition("OCTO_KEY_R", 13));
+            this.directiveDefinitions.put("OCTO_KEY_A", new ConstDefinition("OCTO_KEY_A", 7));
+            this.directiveDefinitions.put("OCTO_KEY_S", new ConstDefinition("OCTO_KEY_S", 8));
+            this.directiveDefinitions.put("OCTO_KEY_D", new ConstDefinition("OCTO_KEY_D", 9));
+            this.directiveDefinitions.put("OCTO_KEY_F", new ConstDefinition("OCTO_KEY_F", 14));
+            this.directiveDefinitions.put("OCTO_KEY_Z", new ConstDefinition("OCTO_KEY_Z", 10));
+            this.directiveDefinitions.put("OCTO_KEY_X", new ConstDefinition("OCTO_KEY_X", 0));
+            this.directiveDefinitions.put("OCTO_KEY_C", new ConstDefinition("OCTO_KEY_C", 11));
+            this.directiveDefinitions.put("OCTO_KEY_V", new ConstDefinition("OCTO_KEY_V", 15));
+        }
+
         private ParserContext(SourceStream<Token> tokenStream) {
             this.tokenStream = tokenStream;
         }
@@ -1113,7 +1132,7 @@ public class OctoParser {
         }
 
         private Collection<CodeElement> checkReservedName(Token token) throws OctoAssemblerException {
-            if (token instanceof ReservedNameToken) {
+            if (token instanceof ReservedNameToken || token.getLexeme().startsWith("OCTO_")) {
                 throw new OctoAssemblerException("The name '%s' is reserved and cannot be used as a label or directive name!".formatted(token.getLexeme()), token.getSourcePosition());
             } else {
                 return List.of(new CallStatement(this.here, new AddressArgument.NamedLabelReference(token)));
