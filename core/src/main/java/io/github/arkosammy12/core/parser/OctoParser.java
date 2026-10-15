@@ -1104,31 +1104,29 @@ public class OctoParser {
             }
         }
 
+
+
         private Optional<Token> peekToken() {
-            Optional<Token> peekedToken = this.pollToken();
-            peekedToken.ifPresent(this.tokenStream::offerFront);
-            return peekedToken;
+            return this.tokenStream.peek();
         }
 
         @SuppressWarnings("unchecked")
         private <T extends Token> Optional<T> peekToken(Class<T> tokenClass) {
-            Optional<Token> optionalToken = this.peekToken();
-            if (optionalToken.isPresent()) {
-                Token token = optionalToken.get();
+            return this.peekToken().map(token -> {
                 if (tokenClass.isInstance(token)) {
-                    return Optional.of((T) token);
+                    return (T) token;
+                } else {
+                    return null;
                 }
-            }
-            return Optional.empty();
+            });
         }
 
         @SuppressWarnings("SameParameterValue")
         private <T extends Token> Optional<T> peekTokenAndPollIfPresent(Class<T> tokenClass) {
-            Optional<T> token = this.peekToken(tokenClass);
-            if (token.isPresent()) {
+            return this.peekToken(tokenClass).map(token -> {
                 this.pollToken();
-            }
-            return token;
+                return token;
+            });
         }
 
         private Collection<CodeElement> checkReservedName(Token token) throws OctoAssemblerException {
