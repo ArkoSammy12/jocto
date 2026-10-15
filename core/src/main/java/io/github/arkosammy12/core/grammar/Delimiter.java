@@ -1,12 +1,9 @@
 package io.github.arkosammy12.core.grammar;
 
 public enum Delimiter {
-    BRACE,
-    PARENTHESIS;
-
-    public enum Type {
-        OPENING,
-        CLOSING
-    }
+    OPENING_PARENTHESIS,
+    CLOSING_PARENTHESIS,
+    OPENING_BRACE,
+    CLOSING_BRACE
 
 }

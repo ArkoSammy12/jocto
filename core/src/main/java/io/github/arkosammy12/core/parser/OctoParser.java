@@ -593,7 +593,7 @@ public class OctoParser {
             case POINTER -> switch (parserContext.pollAsAddress16("Expected number, label, or calculated expression after ':pointer' directive!", directiveToken.getSourcePosition())) {
                 case IntegerLiteralToken integerLiteralToken -> List.of(new PointerElement(parserContext.getHere(), new AddressArgument.Resolved(integerLiteralToken.getValue())));
                 case Token token -> {
-                    if (token instanceof DelimiterToken delimiterToken && delimiterToken.getDelimiter() == Delimiter.BRACE && delimiterToken.getDelimiterType() == Delimiter.Type.OPENING) {
+                    if (token instanceof DelimiterToken delimiterToken && delimiterToken.getDelimiter() == Delimiter.OPENING_BRACE) {
                         yield List.of(new PointerElement(parserContext.getHere(), new AddressArgument.Resolved(toInt32JS(this.parseCalcExpression(parserContext, delimiterToken)) & 0xFFFF)));
                     } else {
                         yield List.of(new PointerElement(parserContext.getHere(), new AddressArgument.NamedLabelReference(token)));
@@ -665,7 +665,7 @@ public class OctoParser {
                         continue;
                     }
                     Token token = optionalToken.get();
-                    if (token instanceof DelimiterToken delimiterToken && delimiterToken.getDelimiter() == Delimiter.BRACE && delimiterToken.getDelimiterType() == Delimiter.Type.OPENING) {
+                    if (token instanceof DelimiterToken delimiterToken && delimiterToken.getDelimiter() == Delimiter.OPENING_BRACE) {
                         body = this.parseMacroBody(parserContext, delimiterToken);
                     } else {
                         parserContext.checkReservedName(token);
@@ -692,12 +692,12 @@ public class OctoParser {
     }
 
     private double parseCalcExpression(ParserContext parserContext, DelimiterToken delimiterToken) throws OctoAssemblerException {
-        if (delimiterToken.getDelimiter() != Delimiter.BRACE || delimiterToken.getDelimiterType() != Delimiter.Type.OPENING) {
+        if (delimiterToken.getDelimiter() != Delimiter.OPENING_BRACE) {
             throw new OctoAssemblerException("Unexpected delimiter token '%s' to begin calculated expression!".formatted(delimiterToken.getLexeme()), delimiterToken.getSourcePosition());
         }
         double value = this.evaluateCalcExpression(parserContext);
         DelimiterToken endDelimiterToken = parserContext.pollTokenOrThrow(DelimiterToken.class, "Expected closing brace '}' to end calculated expression!", delimiterToken.getSourcePosition(), token -> "Unexpected delimiter token '%s' to end calculated expression!".formatted(token.getSourcePosition()));
-        if (endDelimiterToken.getDelimiter() != Delimiter.BRACE || endDelimiterToken.getDelimiterType() != Delimiter.Type.CLOSING) {
+        if (endDelimiterToken.getDelimiter() != Delimiter.CLOSING_BRACE) {
             throw new OctoAssemblerException("Unexpected delimiter token '%s' to end calculated expression!".formatted(endDelimiterToken.getLexeme()), endDelimiterToken.getSourcePosition());
         }
         return value;
@@ -854,12 +854,12 @@ public class OctoParser {
                         default -> {}
                     }
                 }
-                if (!(terminalToken instanceof DelimiterToken delimiterToken) || delimiterToken.getDelimiter() != Delimiter.PARENTHESIS || delimiterToken.getDelimiterType() != Delimiter.Type.OPENING) {
+                if (!(terminalToken instanceof DelimiterToken delimiterToken) || delimiterToken.getDelimiter() != Delimiter.OPENING_PARENTHESIS) {
                     throw new OctoAssemblerException("Found undefined name '%s' when calculating constant expression!".formatted(terminalToken.getLexeme()), terminalToken.getSourcePosition());
                 }
                 double value = this.evaluateCalcExpression(parserContext);
                 DelimiterToken endDelimiterToken = parserContext.pollTokenOrThrow(DelimiterToken.class, "Expected closing parenthesis ')' to end calculated segment!", delimiterToken.getSourcePosition(), actualToken -> "Unexpected delimiter token '%s' to end calculated expression segment!".formatted(actualToken.getSourcePosition()));
-                if (endDelimiterToken.getDelimiter() != Delimiter.PARENTHESIS || endDelimiterToken.getDelimiterType() != Delimiter.Type.CLOSING) {
+                if (endDelimiterToken.getDelimiter() != Delimiter.CLOSING_PARENTHESIS) {
                     throw new OctoAssemblerException("Unexpected delimiter token '%s' to end calculated expression segment!".formatted(endDelimiterToken.getLexeme()), endDelimiterToken.getSourcePosition());
                 }
                 yield value;
@@ -868,7 +868,7 @@ public class OctoParser {
     }
 
     private Collection<Token> parseMacroBody(ParserContext parserContext, DelimiterToken delimiterToken) throws OctoAssemblerException {
-        if (delimiterToken.getDelimiter() != Delimiter.BRACE || delimiterToken.getDelimiterType() != Delimiter.Type.OPENING) {
+        if (delimiterToken.getDelimiter() !=  Delimiter.OPENING_BRACE) {
             throw new OctoAssemblerException("Expected opening brace '{' to begin macro body!", delimiterToken.getSourcePosition());
         }
         Collection<Token> tokenBody = new ArrayList<>();
@@ -880,10 +880,10 @@ public class OctoParser {
                 continue;
             }
             Token bodyToken = optionalToken.get();
-            if (bodyToken instanceof DelimiterToken delimiterBodyToken && delimiterBodyToken.getDelimiter() == Delimiter.BRACE) {
-                switch (delimiterBodyToken.getDelimiterType()) {
-                    case OPENING -> braceCount++;
-                    case CLOSING -> {
+            if (bodyToken instanceof DelimiterToken delimiterBodyToken) {
+                switch (delimiterBodyToken.getDelimiter()) {
+                    case OPENING_BRACE -> braceCount++;
+                    case CLOSING_BRACE -> {
                         braceCount--;
                         if (braceCount <= 0) {
                             continue;
@@ -1103,8 +1103,6 @@ public class OctoParser {
                 throw new OctoAssemblerException(errorIfTokenNotInstance.apply(token), token.getSourcePosition());
             }
         }
-
-
 
         private Optional<Token> peekToken() {
             return this.tokenStream.peek();

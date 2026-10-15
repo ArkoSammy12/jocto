@@ -8,42 +8,32 @@ import java.util.Optional;
 public final class DelimiterToken extends IdentifierToken {
 
     private final Delimiter delimiter;
-    private final Delimiter.Type delimiterType;
 
-    public DelimiterToken(Delimiter delimiter, Delimiter.Type delimiterType, SourcePosition sourcePosition) {
+    public DelimiterToken(Delimiter delimiter, SourcePosition sourcePosition) {
         super(switch (delimiter) {
-            case BRACE -> switch (delimiterType) {
-                case OPENING -> "{";
-                case CLOSING -> "}";
-            };
-            case PARENTHESIS -> switch (delimiterType) {
-                case OPENING -> "(";
-                case CLOSING -> ")";
-            };
+            case OPENING_PARENTHESIS -> "(";
+            case CLOSING_PARENTHESIS -> ")";
+            case OPENING_BRACE -> "{";
+            case CLOSING_BRACE -> "}";
         }, sourcePosition);
         this.delimiter = delimiter;
-        this.delimiterType = delimiterType;
     }
 
     public Delimiter getDelimiter() {
         return this.delimiter;
     }
 
-    public Delimiter.Type getDelimiterType() {
-        return this.delimiterType;
-    }
-
     @Override
     public String toString() {
-        return "DelimiterToken[%s, delimiter=%s, type=%s]".formatted(this.getBaseStringContents(), this.delimiter.name(), this.delimiterType.name());
+        return "DelimiterToken[%s, delimiter=%s]".formatted(this.getBaseStringContents(), this.delimiter.name());
     }
 
     public static Optional<DelimiterToken> tryParse(String lexeme, SourcePosition sourcePosition) {
         return Optional.ofNullable(switch (lexeme) {
-            case "{" -> new DelimiterToken(Delimiter.BRACE, Delimiter.Type.OPENING, sourcePosition);
-            case "}" -> new DelimiterToken(Delimiter.BRACE, Delimiter.Type.CLOSING, sourcePosition);
-            case "(" -> new DelimiterToken(Delimiter.PARENTHESIS, Delimiter.Type.OPENING, sourcePosition);
-            case ")" -> new DelimiterToken(Delimiter.PARENTHESIS, Delimiter.Type.CLOSING, sourcePosition);
+            case "{" -> new DelimiterToken(Delimiter.OPENING_BRACE, sourcePosition);
+            case "}" -> new DelimiterToken(Delimiter.CLOSING_BRACE, sourcePosition);
+            case "(" -> new DelimiterToken(Delimiter.OPENING_PARENTHESIS, sourcePosition);
+            case ")" -> new DelimiterToken(Delimiter.CLOSING_PARENTHESIS, sourcePosition);
             default -> null;
         });
     }
