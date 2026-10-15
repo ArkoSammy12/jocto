@@ -1,6 +1,13 @@
 package io.github.arkosammy12.core.parser.directive;
 
-public sealed abstract class DirectiveDefinition permits AliasDefinition, CalcDefinition, ConstDefinition, LabelDefinition, MacroDefinition, NextDefinition {
+public sealed abstract class DirectiveDefinition permits
+        AliasDefinition,
+        CalcDefinition,
+        ConstDefinition,
+        LabelDefinition,
+        MacroDefinition,
+        NextDefinition,
+        StringModeDefinition {
 
     protected final String name;
 

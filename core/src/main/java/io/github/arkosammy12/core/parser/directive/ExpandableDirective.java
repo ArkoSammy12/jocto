@@ -6,7 +6,7 @@ import io.github.arkosammy12.core.token.Token;
 
 import java.util.List;
 
-public sealed interface ExpandableDirective permits MacroDefinition {
+public sealed interface ExpandableDirective permits MacroDefinition, StringModeDefinition {
 
     int getExpansionArgumentQuantity();
 

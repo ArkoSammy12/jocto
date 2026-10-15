@@ -109,7 +109,7 @@ public class OctoParser {
 
                         // HERE is pointing to the jump instruction that will jump to the end of the if-begin block or to the
                         // else case of the if-else block
-                        JumpStatement jumpAboveIfBlockStatement = new JumpStatement(parserContext.getHere(), new AddressArgument.InternalLabelReference(new InternalLabelKey(parserContext.getHere(), ifBlockBeginningToken.getSourcePosition())));
+                        JumpStatement jumpAboveIfBlockStatement = new JumpStatement(parserContext.getHere(), new AddressArgument.InternalLabelReference(parserContext.createInternalLabelKey(ifBlockBeginningToken.getSourcePosition())));
                         parserContext.pushIf(ifBlockBeginningToken.getSourcePosition());
                         parserContext.incrementHere(ifBlockBeginningToken, jumpAboveIfBlockStatement);
                         ifBlockElements.add(jumpAboveIfBlockStatement);
@@ -128,7 +128,7 @@ public class OctoParser {
                     InternalLabelKey ifKey = optionalIfKey.get();
 
                     // HERE is pointing to the jump instruction that jumps over the else block of an if-else block
-                    JumpStatement jumpAboveElseBlockStatement = new JumpStatement(parserContext.getHere(), new AddressArgument.InternalLabelReference(new InternalLabelKey(parserContext.getHere(), ifBlockKeywordToken.getSourcePosition())));
+                    JumpStatement jumpAboveElseBlockStatement = new JumpStatement(parserContext.getHere(), new AddressArgument.InternalLabelReference(parserContext.createInternalLabelKey(ifBlockKeywordToken.getSourcePosition())));
                     parserContext.pushIf(ifBlockKeywordToken.getSourcePosition());
                     parserContext.incrementHere(ifBlockKeywordToken, jumpAboveElseBlockStatement);
 
@@ -678,10 +678,16 @@ public class OctoParser {
                 parserContext.addDirectiveDefinition(macroDirectiveNameToken, new MacroDefinition(macroDirectiveNameToken.getLexeme(), arguments, body));
                 yield List.of();
             }
+            case STRING_MODE -> {
+                Token stringModeDirectiveNameToken = parserContext.pollTokenOrThrow("Expected name after ':stringmode' directive!", directiveToken.getSourcePosition());
+                StringLiteralToken alphabet = parserContext.pollTokenOrThrow(StringLiteralToken.class, "Expected alphabet string literal argument in ':stringmode' directive!", stringModeDirectiveNameToken.getSourcePosition(), token -> "The argument '%s' is not a string!".formatted(token.getLexeme()));
+                Collection<Token> tokenBody = this.parseMacroBody(parserContext, parserContext.pollTokenOrThrow(DelimiterToken.class, "Expected opening brace '{' to begin ':stringmode' macro body!", alphabet.getSourcePosition(), token -> "The token '%s' is not an opening brace!".formatted(token.getSourcePosition())));
+                parserContext.addDirectiveDefinition(stringModeDirectiveNameToken, new StringModeDefinition(stringModeDirectiveNameToken.getLexeme(), alphabet, tokenBody));
+                yield List.of();
+            }
             case ASSERT -> throw new OctoAssemblerException("The ':assert' directive is not yet supported!", directiveToken.getSourcePosition());
             case MONITOR -> throw new OctoAssemblerException("The ':monitor' directive is not yet supported!", directiveToken.getSourcePosition());
             case BREAKPOINT -> throw new OctoAssemblerException("The ':breakpoint' directive is not yet supported!", directiveToken.getSourcePosition());
-            case STRING_MODE -> throw new OctoAssemblerException("The ':stringmode' directive is not yet supported!", directiveToken.getSourcePosition());
         };
     }
 
@@ -869,8 +875,6 @@ public class OctoParser {
         long braceCount = 1;
 
         while (!parserContext.getTokenStream().isEmpty() && braceCount > 0) {
-            // Bypass directive expansion when collecting the tokens of macro bodies, as these should be expanded during
-            // regular parsing
             Optional<Token> optionalToken = parserContext.pollToken();
             if (optionalToken.isEmpty()) {
                 continue;
@@ -918,18 +922,23 @@ public class OctoParser {
         private final Stack<InternalLabelKey> ifStack = new Stack<>();
         private final Stack<InternalLabelKey> loopStack = new Stack<>();
         private int here = programStart;
+        private long tokenCounter = 0;
         private boolean foundMainLabel;
 
         private ParserContext(SourceStream<Token> tokenStream) {
             this.tokenStream = tokenStream;
         }
 
-        public SourceStream<Token> getTokenStream() {
+        private SourceStream<Token> getTokenStream() {
             return this.tokenStream;
         }
 
-        public int getHere() {
+        private int getHere() {
             return this.here;
+        }
+
+        private long getTokenCounter() {
+            return this.tokenCounter;
         }
 
         private Optional<DirectiveDefinition> getDirective(Token token) {
@@ -970,16 +979,20 @@ public class OctoParser {
         }
 
         private void addDirectiveDefinition(Token token, DirectiveDefinition directiveDefinition) throws OctoAssemblerException {
+            this.checkReservedName(token);
             String name = token.getLexeme();
             DirectiveDefinition existingDirective = this.directiveDefinitions.get(name);
             if (existingDirective != null) {
+                if (directiveDefinition instanceof StringModeDefinition newStringModeDefinition && existingDirective instanceof StringModeDefinition existingStringModeDefinition) {
+                    existingStringModeDefinition.addAlphabet(newStringModeDefinition, token.getSourcePosition());
+                    return;
+                }
                 boolean redefinable = (directiveDefinition instanceof AliasDefinition && existingDirective instanceof AliasDefinition)
                         || (directiveDefinition instanceof CalcDefinition && existingDirective instanceof CalcDefinition);
                 if (!redefinable) {
                     throw new OctoAssemblerException("Directive name '%s' is already defined!".formatted(name), token.getSourcePosition());
                 }
             }
-            this.checkReservedName(token);
             if (directiveDefinition instanceof LabelDefinition labelDefinition && "main".equals(labelDefinition.getName())) {
                 this.foundMainLabel = true;
                 if (labelDefinition.getAddress() == programStart + 2 || labelDefinition.getAddress() == programStart) {
@@ -996,6 +1009,10 @@ public class OctoParser {
                 throw new IllegalArgumentException("Tried to insert internal label definition with key '%s' because it is already mapped to '%d'!".formatted(internalLabelKey, this.internalLabelDefinitions.get(internalLabelKey)));
             }
             this.internalLabelDefinitions.put(internalLabelKey, addressValue);
+        }
+
+        private InternalLabelKey createInternalLabelKey(SourcePosition sourcePositionKey) {
+            return new InternalLabelKey(this.getTokenCounter(), this.getHere(), sourcePositionKey);
         }
 
         private void setHere(int value) {
@@ -1026,7 +1043,7 @@ public class OctoParser {
         }
 
         private void pushIf(SourcePosition sourcePositionKey) {
-            this.ifStack.push(new InternalLabelKey(this.here, sourcePositionKey));
+            this.ifStack.push(this.createInternalLabelKey(sourcePositionKey));
         }
 
         private Optional<InternalLabelKey> peekIf() {
@@ -1038,7 +1055,7 @@ public class OctoParser {
         }
 
         private void pushLoop(SourcePosition sourcePositionKey) {
-            this.loopStack.push(new InternalLabelKey(this.here, sourcePositionKey));
+            this.loopStack.push(this.createInternalLabelKey(sourcePositionKey));
         }
 
         private Optional<InternalLabelKey> peekLoop() {
@@ -1050,7 +1067,14 @@ public class OctoParser {
         }
 
         private Optional<Token> pollToken() {
-            return this.tokenStream.poll();
+            Optional<Token> token = this.tokenStream.poll();
+            if (token.isPresent()) {
+                this.tokenCounter++;
+                if (this.tokenCounter < 0) {
+                    throw new IllegalStateException("Exceeded maximum valid token counter value of '%d'!".formatted(Long.MAX_VALUE));
+                }
+            }
+            return token;
         }
 
         private Token pollTokenOrThrow(String error, SourcePosition sourcePosition) throws OctoAssemblerException {

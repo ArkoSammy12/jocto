@@ -30,7 +30,7 @@ public final class MacroDefinition extends DirectiveDefinition implements Expand
     @Override
     public List<Token> expand(int currentOffset, SourcePosition sourcePosition, Token... expansionArguments) throws OctoAssemblerException {
         if (expansionArguments.length != arguments.size()) {
-            throw new OctoAssemblerException("Expected %d arguments for '%s' macro invocation!".formatted(this.tokenBody.size(), this.name), sourcePosition);
+            throw new OctoAssemblerException("Expected %d arguments for '%s' macro invocation!".formatted(this.arguments.size(), this.name), sourcePosition);
         }
         Collection<Token> expandedTokens = new ArrayList<>();
 
@@ -38,13 +38,12 @@ public final class MacroDefinition extends DirectiveDefinition implements Expand
             for (int i = 0; i < this.arguments.size(); i++) {
                 Token argumentToken = this.arguments.get(i);
                 if (Objects.equals(argumentToken.getLexeme(), bodyToken.getLexeme())) {
-                    // TODO: Consider updating the argument token's source position to match the macro invocation's site for better error reporting
                     expandedTokens.add(expansionArguments[i]);
                     continue expansionLoop;
                 }
             }
             if ("CALLS".equals(bodyToken.getLexeme())) {
-                expandedTokens.add(new IntegerLiteralToken(this.calls, "CALLS", sourcePosition));
+                expandedTokens.add(new IntegerLiteralToken(this.calls, "CALLS", bodyToken.getSourcePosition()));
                 continue;
             }
             expandedTokens.add(bodyToken);
