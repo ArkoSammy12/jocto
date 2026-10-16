@@ -8,7 +8,7 @@ public record InternalLabelKey(long labelId, int addressKey, SourcePosition sour
     @Override
     @NotNull
     public String toString() {
-        return "InternalLabelKey[labelId=%d, addressKey=%04X, sourcePositionKey=%s]".formatted(this.labelId, this.addressKey, this.sourcePositionKey);
+        return "InternalLabelKey[labelId=%d, addressKey=$%04X, sourcePositionKey=%s]".formatted(this.labelId, this.addressKey, this.sourcePositionKey);
     }
 
 }

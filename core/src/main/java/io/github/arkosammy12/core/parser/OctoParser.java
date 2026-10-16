@@ -685,9 +685,45 @@ public class OctoParser {
                 parserContext.addDirectiveDefinition(stringModeDirectiveNameToken, new StringModeDefinition(stringModeDirectiveNameToken.getLexeme(), alphabet, tokenBody));
                 yield List.of();
             }
-            case ASSERT -> throw new OctoAssemblerException("The ':assert' directive is not yet supported!", directiveToken.getSourcePosition());
-            case MONITOR -> throw new OctoAssemblerException("The ':monitor' directive is not yet supported!", directiveToken.getSourcePosition());
-            case BREAKPOINT -> throw new OctoAssemblerException("The ':breakpoint' directive is not yet supported!", directiveToken.getSourcePosition());
+            case ASSERT -> {
+                Token following = parserContext.pollTokenOrThrow("Expected optional name or opening brace '{' after ':assert' directive!", directiveToken.getSourcePosition());
+                if (following instanceof DelimiterToken delimiterToken && delimiterToken.getDelimiter() == Delimiter.OPENING_BRACE) {
+                    this.parseCalcExpression(parserContext, delimiterToken);
+                } else {
+                    parserContext.checkReservedName(following);
+                    this.parseCalcExpression(parserContext, parserContext.pollTokenOrThrow(DelimiterToken.class, "Expected opening brace '{' to begin calc expression!", following.getSourcePosition(), token -> "The token '%s' is not a '{'!".formatted(token.getLexeme())));
+                }
+                yield List.of();
+            }
+            case MONITOR -> {
+                IntegerLiteralToken base = switch (parserContext.pollAsAddress16("Expected register or base address following ':monitor' directive!", directiveToken.getSourcePosition())) {
+                    case IntegerLiteralToken integerLiteralToken -> integerLiteralToken;
+                    case RegisterLiteralToken registerLiteralToken -> new IntegerLiteralToken(registerLiteralToken.getRegisterIndex(), registerLiteralToken.getLexeme(), registerLiteralToken.getSourcePosition());
+                    case Token token -> parserContext.getDirective(token).map(directiveDefinition -> {
+                        if (directiveDefinition instanceof AliasDefinition aliasDefinition) {
+                            return new IntegerLiteralToken(aliasDefinition.getRegisterIndex(), token.getLexeme(), token.getSourcePosition());
+                        } else {
+                            return null;
+                        }
+                    }).orElseThrow(() -> new OctoAssemblerException("The name '%s' does not correspond to a register or a known base address!".formatted(token.getLexeme()), token.getSourcePosition()));
+                };
+                Token target = parserContext.pollTokenOrThrow("Expected numeric value or format string as the ':monitor' directive target!", base.getSourcePosition());
+                switch (target) {
+                    case StringLiteralToken _, IntegerLiteralToken _ -> {}
+                    case Token token -> parserContext.getDirective(token).map(directiveDefinition -> {
+                        if (directiveDefinition instanceof ConstantDirectiveDefinition constantDirectiveDefinition) {
+                            return constantDirectiveDefinition;
+                        } else {
+                            return null;
+                        }
+                    }).orElseThrow(() -> new OctoAssemblerException("Unresolved name '%s'!".formatted(token.getLexeme()), token.getSourcePosition()));
+                }
+                yield List.of();
+            }
+            case BREAKPOINT -> {
+                parserContext.checkReservedName(parserContext.pollTokenOrThrow("Expected name token after ':breakpoint' directive!", directiveToken.getSourcePosition()));
+                yield List.of();
+            }
         };
     }
 
@@ -922,7 +958,7 @@ public class OctoParser {
         private final Stack<InternalLabelKey> ifStack = new Stack<>();
         private final Stack<InternalLabelKey> loopStack = new Stack<>();
         private int here = programStart;
-        private long internalLabelKeyCounter = 0;
+        private long tokenPollCounter = 0;
         private boolean foundMainLabel;
 
         {
@@ -1027,12 +1063,7 @@ public class OctoParser {
         }
 
         private InternalLabelKey createInternalLabelKey(SourcePosition sourcePositionKey) {
-            InternalLabelKey internalLabelKey = new InternalLabelKey(this.internalLabelKeyCounter, this.getHere(), sourcePositionKey);
-            this.internalLabelKeyCounter++;
-            if (this.internalLabelKeyCounter < 0) {
-                throw new IllegalStateException("Exceeded maximum valid token counter value of '%d'!".formatted(Long.MAX_VALUE));
-            }
-            return internalLabelKey;
+            return new InternalLabelKey(this.tokenPollCounter, this.getHere(), sourcePositionKey);
         }
 
         private void setHere(int value) {
@@ -1087,7 +1118,12 @@ public class OctoParser {
         }
 
         private Optional<Token> pollToken() {
-            return this.tokenStream.poll();
+            Optional<Token> token = this.tokenStream.poll();
+            this.tokenPollCounter++;
+            if (this.tokenPollCounter < 0) {
+                throw new IllegalStateException("Exceeded maximum valid token poll counter value of '%d'!".formatted(Long.MAX_VALUE));
+            }
+            return token;
         }
 
         private Token pollTokenOrThrow(String error, SourcePosition sourcePosition) throws OctoAssemblerException {
