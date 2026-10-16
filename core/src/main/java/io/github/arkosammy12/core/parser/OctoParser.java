@@ -1119,6 +1119,12 @@ public class OctoParser {
 
         private Optional<Token> pollToken() {
             Optional<Token> token = this.tokenStream.poll();
+
+            // TODO: remove
+            if (token.isPresent() && token.get().getLexeme().equals("DYAD")) {
+                int a = 1;
+            }
+
             this.tokenPollCounter++;
             if (this.tokenPollCounter < 0) {
                 throw new IllegalStateException("Exceeded maximum valid token poll counter value of '%d'!".formatted(Long.MAX_VALUE));
@@ -1167,7 +1173,13 @@ public class OctoParser {
             if (token instanceof ReservedNameToken || token.getLexeme().startsWith("OCTO_")) {
                 throw new OctoAssemblerException("The name '%s' is reserved and cannot be used as a label or directive name!".formatted(token.getLexeme()), token.getSourcePosition());
             } else {
-                return List.of(new CallStatement(this.here, new AddressArgument.NamedLabelReference(token)));
+                return List.of(new CallStatement(this.getHere(), this.getDirective(token).<AddressArgument>map(directiveDefinition -> {
+                    if (directiveDefinition instanceof ConstantDirectiveDefinition constantDirectiveDefinition) {
+                        return new AddressArgument.Resolved(constantDirectiveDefinition.getInt32Value() & 0xFFFF);
+                    } else {
+                        return null;
+                    }
+                }).orElseGet(() -> new AddressArgument.NamedLabelReference(token))));
             }
         }
 
