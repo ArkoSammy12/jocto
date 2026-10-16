@@ -1119,12 +1119,6 @@ public class OctoParser {
 
         private Optional<Token> pollToken() {
             Optional<Token> token = this.tokenStream.poll();
-
-            // TODO: remove
-            if (token.isPresent() && token.get().getLexeme().equals("DYAD")) {
-                int a = 1;
-            }
-
             this.tokenPollCounter++;
             if (this.tokenPollCounter < 0) {
                 throw new IllegalStateException("Exceeded maximum valid token poll counter value of '%d'!".formatted(Long.MAX_VALUE));
