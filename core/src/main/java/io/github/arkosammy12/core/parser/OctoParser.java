@@ -539,7 +539,13 @@ public class OctoParser {
                         }
                     }
                     case DelimiterToken delimiterToken -> parserContext.setHere(toInt32JS(this.parseCalcExpression(parserContext, delimiterToken)) & 0xFFFF);
-                    case Token token -> throw new OctoAssemblerException("Unknown ':org' directive argument '%s'!".formatted(token.getLexeme()), token.getSourcePosition());
+                    case Token token -> parserContext.setHere(parserContext.getDirective(token).map(directiveDefinition -> {
+                        if (directiveDefinition instanceof ConstantDirectiveDefinition constantDirectiveDefinition) {
+                            return constantDirectiveDefinition;
+                        } else {
+                            return null;
+                        }
+                    }).orElseThrow(() -> new OctoAssemblerException("Unknown ':org' directive argument '%s'!".formatted(token.getLexeme()), token.getSourcePosition())).getInt32Value() & 0xFFFF);
                 }
                 yield List.of();
             }
