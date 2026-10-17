@@ -1241,7 +1241,12 @@ public class OctoParser {
                         throw new OctoAssemblerException("Unresolved directive name '%s'!".formatted(nameToken.getLexeme()), nameToken.getSourcePosition());
                     }
                     if (directiveDefinition.get() instanceof ConstantDirectiveDefinition constantDirectiveDefinition) {
-                        yield new IntegerLiteralToken(constantDirectiveDefinition.getUInt8Value(), nameToken.getLexeme(), nameToken.getSourcePosition());
+                        if (constantDirectiveDefinition.is8Bits()) {
+                            yield new IntegerLiteralToken(constantDirectiveDefinition.getInt32Value(), nameToken.getLexeme(), nameToken.getSourcePosition());
+                        } else {
+                            throw new OctoAssemblerException("The integer argument '%d' does not fit in 8 bits. Must be in the range [-128, 255]!".formatted(constantDirectiveDefinition.getInt32Value()), nameToken.getSourcePosition());
+                        }
+
                     } else {
                         throw new OctoAssemblerException("Expected 8 bit integer argument, got '%s'!".formatted(nameToken.getLexeme()), nameToken.getSourcePosition());
                     }
@@ -1265,7 +1270,13 @@ public class OctoParser {
                         yield nameToken;
                     }
                     yield switch (directiveDefinition.get()) {
-                        case ConstantDirectiveDefinition constantDirectiveDefinition -> new IntegerLiteralToken(constantDirectiveDefinition.getUInt8Value(), nameToken.getLexeme(), nameToken.getSourcePosition());
+                        case ConstantDirectiveDefinition constantDirectiveDefinition -> {
+                            if (constantDirectiveDefinition.is8Bits()) {
+                                yield new IntegerLiteralToken(constantDirectiveDefinition.getInt32Value(), nameToken.getLexeme(), nameToken.getSourcePosition());
+                            } else {
+                                throw new OctoAssemblerException("The integer argument '%d' does not fit in 8 bits. Must be in the range [-128, 255]!".formatted(constantDirectiveDefinition.getInt32Value()), nameToken.getSourcePosition());
+                            }
+                        }
                         case AliasDefinition aliasDefinition -> new RegisterLiteralToken(aliasDefinition.getRegisterIndex(), nameToken.getLexeme(), nameToken.getSourcePosition());
                         default -> throw new OctoAssemblerException("The directive name '%s' does not correspond to a constant or alias definition!".formatted(nameToken.getLexeme()), nameToken.getSourcePosition());
                     };
