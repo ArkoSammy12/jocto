@@ -519,16 +519,18 @@ public class OctoParser {
                         throw new OctoAssemblerException("Raw integer literal '%d' does not fit in 8 bits [-128, 255]".formatted(numberLiteralToken.getValue()), numberLiteralToken.getSourcePosition());
                     }
                 }
-                // TODO: '}', '(', and ')' may also be directive identifiers!
-                case DelimiterToken delimiterToken -> List.of(new ByteElement(parserContext.getHere(), toUInt8JS(this.parseCalcExpression(parserContext, delimiterToken))));
                 case Token token -> {
-                    Optional<DirectiveDefinition> directiveDefinition = parserContext.getDirective(token);
-                    if (directiveDefinition.isEmpty()) {
-                        throw new OctoAssemblerException("Unresolved name '%s'!".formatted(token.getLexeme()), token.getSourcePosition());
-                    } else if (directiveDefinition.get() instanceof ConstantDirectiveDefinition constantDirectiveDefinition) {
-                        yield List.of(new ByteElement(parserContext.getHere(), constantDirectiveDefinition.getUInt8Value()));
+                    if (token instanceof DelimiterToken delimiterToken && delimiterToken.getDelimiter() == Delimiter.OPENING_BRACE) {
+                        yield List.of(new ByteElement(parserContext.getHere(), toUInt8JS(this.parseCalcExpression(parserContext, delimiterToken))));
                     } else {
-                        throw new OctoAssemblerException("The name '%s' does not correspond to a constant directive definition!".formatted(token.getLexeme()), token.getSourcePosition());
+                        Optional<DirectiveDefinition> directiveDefinition = parserContext.getDirective(token);
+                        if (directiveDefinition.isEmpty()) {
+                            throw new OctoAssemblerException("Unresolved name '%s'!".formatted(token.getLexeme()), token.getSourcePosition());
+                        } else if (directiveDefinition.get() instanceof ConstantDirectiveDefinition constantDirectiveDefinition) {
+                            yield List.of(new ByteElement(parserContext.getHere(), constantDirectiveDefinition.getUInt8Value()));
+                        } else {
+                            throw new OctoAssemblerException("The name '%s' does not correspond to a constant directive definition!".formatted(token.getLexeme()), token.getSourcePosition());
+                        }
                     }
                 }
             };
@@ -541,42 +543,53 @@ public class OctoParser {
                             throw new OctoAssemblerException("The ':org' argument value '%d' does not fit in 16 bits!".formatted(integerLiteralToken.getValue()), integerLiteralToken.getSourcePosition());
                         }
                     }
-                    case DelimiterToken delimiterToken -> parserContext.setHere(toInt32JS(this.parseCalcExpression(parserContext, delimiterToken)) & 0xFFFF);
-                    case Token token -> parserContext.setHere(parserContext.getDirective(token).map(directiveDefinition -> {
-                        if (directiveDefinition instanceof ConstantDirectiveDefinition constantDirectiveDefinition) {
-                            return constantDirectiveDefinition;
+                    case Token token -> {
+                        if (token instanceof DelimiterToken delimiterToken && delimiterToken.getDelimiter() == Delimiter.OPENING_BRACE) {
+                            parserContext.setHere(toInt32JS(this.parseCalcExpression(parserContext, delimiterToken)) & 0xFFFF);
                         } else {
-                            return null;
+                            parserContext.setHere(parserContext.getDirective(token).map(directiveDefinition -> {
+                                if (directiveDefinition instanceof ConstantDirectiveDefinition constantDirectiveDefinition) {
+                                    return constantDirectiveDefinition;
+                                } else {
+                                    return null;
+                                }
+                            }).orElseThrow(() -> new OctoAssemblerException("Unknown ':org' directive argument '%s'!".formatted(token.getLexeme()), token.getSourcePosition())).getInt32Value() & 0xFFFF);
                         }
-                    }).orElseThrow(() -> new OctoAssemblerException("Unknown ':org' directive argument '%s'!".formatted(token.getLexeme()), token.getSourcePosition())).getInt32Value() & 0xFFFF);
+                    }
                 }
                 yield List.of();
             }
             case CALL -> switch (parserContext.pollAsAddress12("Expected number or calculated expression after ':call' directive!", directiveToken.getSourcePosition())) {
                 case IntegerLiteralToken integerLiteralToken -> List.of(new CallStatement(parserContext.getHere(), new AddressArgument.Resolved(integerLiteralToken.getValue() & 0xFFF)));
-                case DelimiterToken delimiterToken -> List.of(new CallStatement(parserContext.getHere(), new AddressArgument.Resolved(toInt32JS(this.parseCalcExpression(parserContext, delimiterToken)) & 0xFFF)));
-                case Token token -> List.of(new CallStatement(parserContext.getHere(), new AddressArgument.NamedLabelReference(token)));
+                case Token token -> {
+                    if (token instanceof DelimiterToken delimiterToken && delimiterToken.getDelimiter() == Delimiter.OPENING_BRACE) {
+                        yield List.of(new CallStatement(parserContext.getHere(), new AddressArgument.Resolved(toInt32JS(this.parseCalcExpression(parserContext, delimiterToken)) & 0xFFF)));
+                    } else {
+                        yield List.of(new CallStatement(parserContext.getHere(), new AddressArgument.NamedLabelReference(token)));
+                    }
+                }
             };
             case ALIAS -> {
                 Token aliasNameToken = parserContext.pollTokenOrThrow("Expected name after ':alias' directive!", directiveToken.getSourcePosition());
                 switch (parserContext.pollTokenOrThrow("Expected register or calculated expression argument in 'alias' directive!", aliasNameToken.getSourcePosition())) {
                     case RegisterLiteralToken registerLiteralToken -> parserContext.addDirectiveDefinition(aliasNameToken, new AliasDefinition(aliasNameToken.getLexeme(), registerLiteralToken.getRegisterIndex()));
-                    case DelimiterToken delimiterToken -> {
-                        int registerIndex = toInt32JS(this.parseCalcExpression(parserContext, delimiterToken));
-                        if (registerIndex >= 0 && registerIndex <= 15) {
-                            parserContext.addDirectiveDefinition(aliasNameToken, new AliasDefinition(aliasNameToken.getLexeme(), registerIndex));
-                        } else {
-                            throw new OctoAssemblerException("Register index argument '%d' for 'alias' directive must be in the range [0, 15]!".formatted(registerIndex), delimiterToken.getSourcePosition());
-                        }
-                    }
                     case Token aliasArgumentToken -> {
-                        Optional<DirectiveDefinition> directiveDefinition = parserContext.getDirective(aliasArgumentToken);
-                        if (directiveDefinition.isEmpty()) {
-                            throw new OctoAssemblerException("Unresolved name '%s'!".formatted(aliasArgumentToken.getLexeme()), aliasArgumentToken.getSourcePosition());
-                        } else if (directiveDefinition.get() instanceof AliasDefinition aliasDefinition) {
-                            parserContext.addDirectiveDefinition(aliasNameToken, new AliasDefinition(aliasNameToken.getLexeme(), aliasDefinition.getRegisterIndex()));
+                        if (aliasArgumentToken instanceof DelimiterToken delimiterToken && delimiterToken.getDelimiter() == Delimiter.OPENING_BRACE) {
+                            int registerIndex = toInt32JS(this.parseCalcExpression(parserContext, delimiterToken));
+                            if (registerIndex >= 0 && registerIndex <= 15) {
+                                parserContext.addDirectiveDefinition(aliasNameToken, new AliasDefinition(aliasNameToken.getLexeme(), registerIndex));
+                            } else {
+                                throw new OctoAssemblerException("Register index argument '%d' for 'alias' directive must be in the range [0, 15]!".formatted(registerIndex), delimiterToken.getSourcePosition());
+                            }
                         } else {
-                            throw new OctoAssemblerException("The name '%s' does not correspond to an ':alias' directive definition!".formatted(aliasArgumentToken.getLexeme()), aliasArgumentToken.getSourcePosition());
+                            Optional<DirectiveDefinition> directiveDefinition = parserContext.getDirective(aliasArgumentToken);
+                            if (directiveDefinition.isEmpty()) {
+                                throw new OctoAssemblerException("Unresolved name '%s'!".formatted(aliasArgumentToken.getLexeme()), aliasArgumentToken.getSourcePosition());
+                            } else if (directiveDefinition.get() instanceof AliasDefinition aliasDefinition) {
+                                parserContext.addDirectiveDefinition(aliasNameToken, new AliasDefinition(aliasNameToken.getLexeme(), aliasDefinition.getRegisterIndex()));
+                            } else {
+                                throw new OctoAssemblerException("The name '%s' does not correspond to an ':alias' directive definition!".formatted(aliasArgumentToken.getLexeme()), aliasArgumentToken.getSourcePosition());
+                            }
                         }
                     }
                 }
