@@ -1287,7 +1287,11 @@ public class OctoParser {
                     if (directiveDefinition.isEmpty()) {
                         yield nameToken;
                     } else if (directiveDefinition.get() instanceof ConstantDirectiveDefinition constantDirectiveDefinition) {
-                        yield new IntegerLiteralToken(constantDirectiveDefinition.getInt32Value() & 0xFFF, nameToken.getLexeme(), nameToken.getSourcePosition());
+                        if (constantDirectiveDefinition.isUnsigned12Bits()) {
+                            yield new IntegerLiteralToken(constantDirectiveDefinition.getInt32Value(), nameToken.getLexeme(), nameToken.getSourcePosition());
+                        } else {
+                            throw new OctoAssemblerException("The integer argument '%d' does not fit in 12 bits!".formatted(constantDirectiveDefinition.getInt32Value()), nameToken.getSourcePosition());
+                        }
                     } else {
                         yield nameToken;
                     }
