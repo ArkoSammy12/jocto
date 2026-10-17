@@ -2,6 +2,7 @@ package io.github.arkosammy12.core.token;
 
 import io.github.arkosammy12.core.lexer.Lexeme;
 import io.github.arkosammy12.core.lexer.SourcePosition;
+import io.github.arkosammy12.core.result.OctoAssemblerException;
 
 import java.util.Optional;
 
@@ -35,7 +36,7 @@ public abstract sealed class AbstractToken implements Token permits LiteralToken
         return this.sourcePosition;
     }
 
-    public static Optional<? extends AbstractToken> tryParse(String lexeme, SourcePosition sourcePosition) {
+    public static Optional<? extends AbstractToken> tryParse(String lexeme, SourcePosition sourcePosition) throws OctoAssemblerException {
         Optional<? extends NameToken> nameToken = NameToken.tryParse(lexeme, sourcePosition);
         if (nameToken.isPresent()) {
             return nameToken;

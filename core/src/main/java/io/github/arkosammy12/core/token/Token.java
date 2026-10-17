@@ -2,6 +2,7 @@ package io.github.arkosammy12.core.token;
 
 import io.github.arkosammy12.core.lexer.Lexeme;
 import io.github.arkosammy12.core.lexer.SourcePosition;
+import io.github.arkosammy12.core.result.OctoAssemblerException;
 
 import java.util.Optional;
 import java.util.function.Function;
@@ -26,7 +27,7 @@ public sealed interface Token permits
         return Optional.empty();
     }
 
-    static Token tryParse(String lexeme, SourcePosition sourcePosition) {
+    static Token tryParse(String lexeme, SourcePosition sourcePosition) throws OctoAssemblerException {
         Optional<? extends AbstractToken> abstractToken = AbstractToken.tryParse(lexeme, sourcePosition);
         if (abstractToken.isPresent()) {
             return abstractToken.get();

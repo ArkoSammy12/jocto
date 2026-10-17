@@ -1,6 +1,7 @@
 package io.github.arkosammy12.core.token;
 
 import io.github.arkosammy12.core.lexer.SourcePosition;
+import io.github.arkosammy12.core.result.OctoAssemblerException;
 
 import java.util.Optional;
 
@@ -10,7 +11,7 @@ public abstract sealed class LiteralToken extends AbstractToken permits FloatLit
         super(lexeme, sourcePosition);
     }
 
-    public static Optional<? extends LiteralToken> tryParse(String lexeme, SourcePosition sourcePosition) {
+    public static Optional<? extends LiteralToken> tryParse(String lexeme, SourcePosition sourcePosition) throws OctoAssemblerException {
         Optional<RegisterLiteralToken> registerLiteralToken = RegisterLiteralToken.tryParse(lexeme, sourcePosition);
         if (registerLiteralToken.isPresent()) {
             return registerLiteralToken;

@@ -20,6 +20,10 @@ public class OctoAssemblerException extends Exception {
         this(error, null);
     }
 
+    public OctoLexerResult toOctoLexerResult() {
+        return new OctoLexerResult.Error(this.error, this.sourcePosition);
+    }
+
     public OctoParserResult toParserResult() {
         return new OctoParserResult.Error(this.error, this.sourcePosition);
     }

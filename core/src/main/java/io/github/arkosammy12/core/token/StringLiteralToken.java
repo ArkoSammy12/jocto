@@ -1,6 +1,7 @@
 package io.github.arkosammy12.core.token;
 
 import io.github.arkosammy12.core.lexer.SourcePosition;
+import io.github.arkosammy12.core.result.OctoAssemblerException;
 
 import java.util.Optional;
 
@@ -27,7 +28,7 @@ public final class StringLiteralToken extends LiteralToken {
         return "StringLiteralToken[%s, resolved=%s]".formatted(this.getBaseStringContents(), this.resolved);
     }
 
-    public static Optional<StringLiteralToken> tryParse(String lexeme, SourcePosition sourcePosition) {
+    public static Optional<StringLiteralToken> tryParse(String lexeme, SourcePosition sourcePosition) throws OctoAssemblerException {
         if (lexeme.length() < 2) {
             return Optional.empty();
         }
@@ -40,7 +41,7 @@ public final class StringLiteralToken extends LiteralToken {
                 if (c == '\\') {
                     i++;
                     if (i >= contents.length()) {
-                        return Optional.empty();
+                        throw new OctoAssemblerException("Unterminated escape sequence in string literal!", sourcePosition);
                     } else {
                         switch (contents.charAt(i)) {
                             case 't' -> resolved.append('\t');
@@ -50,9 +51,7 @@ public final class StringLiteralToken extends LiteralToken {
                             case '0' -> resolved.append('\0');
                             case '\\' -> resolved.append('\\');
                             case '"' -> resolved.append('"');
-                            default -> {
-                                return Optional.empty();
-                            }
+                            default -> throw new OctoAssemblerException("Unrecognized escape character '%s' in string literal!".formatted(contents.charAt(i)), sourcePosition);
                         }
                     }
                 } else {
