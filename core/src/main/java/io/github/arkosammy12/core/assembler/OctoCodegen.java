@@ -101,7 +101,8 @@ public class OctoCodegen {
         private void addBytes(byte[] bytes, int offset) throws OctoAssemblerException {
             int absoluteOffset = offset - programStart;
             if (absoluteOffset < 0) {
-                throw new IllegalArgumentException("Tried to write bytes to ROM before program start!");
+                return;
+                //throw new IllegalArgumentException("Tried to write bytes to ROM before program start!");
             }
 
             int requiredSize = absoluteOffset + bytes.length;
