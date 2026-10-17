@@ -1,3 +1,2 @@
 enchilada.8o
 err_expect_string.8o
-err_longval.8o
