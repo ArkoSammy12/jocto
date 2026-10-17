@@ -22,7 +22,8 @@ public enum InstructionStatementLexeme implements Lexeme {
     LOAD_FLAGS("loadflags", InstructionStatementKeyword.LOAD_FLAGS),
     PLANE("plane", InstructionStatementKeyword.PLANE),
     AUDIO("audio", InstructionStatementKeyword.AUDIO),
-    SCROLL_UP("scroll-up", InstructionStatementKeyword.SCROLL_UP);
+    SCROLL_UP("scroll-up", InstructionStatementKeyword.SCROLL_UP),
+    NATIVE("native", InstructionStatementKeyword.NATIVE);
 
     private final String lexeme;
     private final InstructionStatementKeyword instructionStatementKeyword;

@@ -22,6 +22,8 @@ public enum InstructionStatementKeyword {
     PLANE,
     AUDIO,
     PITCH,
-    SCROLL_UP
+    SCROLL_UP,
+
+    NATIVE
 
 }

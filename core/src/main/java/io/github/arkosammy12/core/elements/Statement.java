@@ -12,7 +12,7 @@ public sealed abstract class Statement extends InstructionElement permits
         LoadFlagsStatement,
         LoadRegistersStatement,
         LoresStatement,
-        SetBitplanesStatement,
+        NativeCallStatement,
         ReturnStatement,
         SaveFlagsStatement,
         SaveRegistersStatement,
@@ -20,6 +20,7 @@ public sealed abstract class Statement extends InstructionElement permits
         ScrollLeftStatement,
         ScrollRightStatement,
         ScrollUpStatement,
+        SetBitplanesStatement,
         SpriteStatement {
 
     public Statement(int offset) {

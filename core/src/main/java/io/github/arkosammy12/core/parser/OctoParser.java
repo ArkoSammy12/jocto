@@ -359,11 +359,11 @@ public class OctoParser {
                     yield List.of(new SpriteStatement(parserContext.getHere(), vx.getRegisterIndex(), vy.getRegisterIndex(), n.getValue()));
                 }
                 case JUMP -> switch (parserContext.pollAsAddress12("Expected number or label operand in 'jump' statement!", instructionStatementNameToken.getSourcePosition())) {
-                    case IntegerLiteralToken n -> List.of(new JumpStatement(parserContext.getHere(), new AddressArgument.Resolved(n.getValue())));
+                    case IntegerLiteralToken nnn -> List.of(new JumpStatement(parserContext.getHere(), new AddressArgument.Resolved(nnn.getValue())));
                     case Token token -> List.of(new JumpStatement(parserContext.getHere(), new AddressArgument.NamedLabelReference(token)));
                 };
                 case JUMP0 -> switch (parserContext.pollAsAddress12("Expected number or label operand in 'jump0' statement!", instructionStatementNameToken.getSourcePosition())) {
-                    case IntegerLiteralToken n -> List.of(new JumpZeroStatement(parserContext.getHere(), new AddressArgument.Resolved(n.getValue())));
+                    case IntegerLiteralToken nnn -> List.of(new JumpZeroStatement(parserContext.getHere(), new AddressArgument.Resolved(nnn.getValue())));
                     case Token token -> List.of(new JumpZeroStatement(parserContext.getHere(), new AddressArgument.NamedLabelReference(token)));
                 };
                 case HIRES -> List.of(new HiresStatement(parserContext.getHere()));
@@ -384,7 +384,11 @@ public class OctoParser {
                         throw new OctoAssemblerException("Unknown assignment operator '%s' after 'pitch' statement".formatted(assignmentOperatorToken.getLexeme()), assignmentOperatorToken.getSourcePosition());
                     }
                 }
-                case SCROLL_UP -> List.of(new ScrollUpStatement(parserContext.getHere(), parserContext.pollAsNibbleValue("Expected number operand in 'scroll-up' statement!", instructionStatementNameToken.getSourcePosition()).getValue()));
+                case SCROLL_UP -> List.of(new ScrollUpStatement(parserContext.getHere(), parserContext.pollAsNibbleValue("Expected number operand in 'native' statement!", instructionStatementNameToken.getSourcePosition()).getValue()));
+                case NATIVE -> switch (parserContext.pollAsAddress12("Expected number or label operand in 'native' statement!", instructionStatementNameToken.getSourcePosition())) {
+                    case IntegerLiteralToken nnn -> List.of(new NativeCallStatement(parserContext.getHere(), new AddressArgument.Resolved(nnn.getValue())));
+                    case Token token -> List.of(new NativeCallStatement(parserContext.getHere(), new AddressArgument.NamedLabelReference(token)));
+                };
             };
         };
     }
@@ -1175,7 +1179,7 @@ public class OctoParser {
             } else {
                 return List.of(new CallStatement(this.getHere(), this.getDirective(token).<AddressArgument>map(directiveDefinition -> {
                     if (directiveDefinition instanceof ConstantDirectiveDefinition constantDirectiveDefinition) {
-                        return new AddressArgument.Resolved(constantDirectiveDefinition.getInt32Value() & 0xFFFF);
+                        return new AddressArgument.Resolved(constantDirectiveDefinition.getInt32Value() & 0xFFF);
                     } else {
                         return null;
                     }
