@@ -532,7 +532,6 @@ public class OctoParser {
                     }
                 }
             };
-            // TODO: Handle constant values!
             case ORG -> {
                 switch (parserContext.pollTokenOrThrow("Expected address value or calculated expression after ':org' directive!", directiveToken.getSourcePosition())) {
                     case IntegerLiteralToken integerLiteralToken -> {
@@ -731,7 +730,11 @@ public class OctoParser {
                 yield List.of();
             }
             case BREAKPOINT -> {
-                parserContext.checkReservedName(parserContext.pollTokenOrThrow("Expected name token after ':breakpoint' directive!", directiveToken.getSourcePosition()));
+                Token token = parserContext.pollTokenOrThrow("Expected name token after ':breakpoint' directive!", directiveToken.getSourcePosition());
+                if (token instanceof NumberLiteralToken) {
+                    throw new OctoAssemblerException("The argument '%s' is not a name token!".formatted(token.getLexeme()), token.getSourcePosition());
+                }
+                parserContext.checkReservedName(token);
                 yield List.of();
             }
         };

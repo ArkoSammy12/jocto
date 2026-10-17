@@ -4,7 +4,7 @@ import io.github.arkosammy12.core.lexer.SourcePosition;
 
 import java.util.Optional;
 
-public final class IntegerLiteralToken extends LiteralToken {
+public final class IntegerLiteralToken extends NumberLiteralToken {
 
     private final int value;
 

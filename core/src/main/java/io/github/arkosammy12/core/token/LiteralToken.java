@@ -5,7 +5,7 @@ import io.github.arkosammy12.core.result.OctoAssemblerException;
 
 import java.util.Optional;
 
-public abstract sealed class LiteralToken extends AbstractToken permits FloatLiteralToken, IntegerLiteralToken, RegisterLiteralToken, StringLiteralToken {
+public abstract sealed class LiteralToken extends AbstractToken permits NumberLiteralToken, RegisterLiteralToken, StringLiteralToken {
 
     public LiteralToken(String lexeme, SourcePosition sourcePosition) {
         super(lexeme, sourcePosition);
