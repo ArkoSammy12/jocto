@@ -8,7 +8,14 @@ import java.util.Optional;
 
 public sealed interface OctoLexerResult extends OctoAssemblerResult {
 
-    record Ok(SourceStream<Token> tokenStream) implements OctoLexerResult, OctoAssemblerResult.Ok {}
+    record Ok(SourceStream<Token> tokenStream) implements OctoLexerResult, OctoAssemblerResult.Ok {
+
+        @Override
+        public String getString() {
+            return "OctoLexerResult.Ok[]";
+        }
+
+    }
 
     record Error(String error, SourcePosition sourcePosition) implements OctoLexerResult, OctoAssemblerResult.Error {
 

@@ -1,0 +1,6 @@
+enchilada.8o
+err_bad_escape.8o
+err_expect_string.8o
+err_longi.8o
+err_longval.8o
+slippery.8o

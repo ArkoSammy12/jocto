@@ -12,7 +12,14 @@ import java.util.Optional;
 
 public sealed interface OctoParserResult extends OctoAssemblerResult {
 
-    record Ok(Collection<CodeElement> codeElements, Map<String, LabelDefinition> labelDefinitions, Map<InternalLabelKey, Integer> internalLabelDefinitions) implements OctoParserResult, OctoAssemblerResult.Ok {}
+    record Ok(Collection<CodeElement> codeElements, Map<String, LabelDefinition> labelDefinitions, Map<InternalLabelKey, Integer> internalLabelDefinitions) implements OctoParserResult, OctoAssemblerResult.Ok {
+
+        @Override
+        public String getString() {
+            return "OctoParserResult.Ok[codeElements=%d, labelDefinitions=%d, internalLabelDefinitions=%d]".formatted(this.codeElements().size(), this.labelDefinitions().size(), this.internalLabelDefinitions().size());
+        }
+
+    }
 
     final class Error implements OctoParserResult, OctoAssemblerResult.Error {
 

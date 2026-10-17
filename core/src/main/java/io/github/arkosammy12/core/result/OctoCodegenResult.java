@@ -7,7 +7,14 @@ import java.util.Optional;
 
 public sealed interface OctoCodegenResult extends OctoAssemblerResult {
 
-    record Ok(byte[] rom) implements OctoCodegenResult, OctoAssemblerResult.Ok {}
+    record Ok(byte[] rom) implements OctoCodegenResult, OctoAssemblerResult.Ok {
+
+        @Override
+        public String getString() {
+            return "OctoCodegenResult.Ok[bytes=%d]".formatted(this.rom().length);
+        }
+
+    }
 
     final class Error implements OctoCodegenResult, OctoAssemblerResult.Error {
 
