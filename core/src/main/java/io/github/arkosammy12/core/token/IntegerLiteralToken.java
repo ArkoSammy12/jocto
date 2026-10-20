@@ -49,7 +49,7 @@ public final class IntegerLiteralToken extends NumberLiteralToken {
                 check = check.substring(1);
             }
             int value;
-            if (check.startsWith("0x")) {
+            if (check.startsWith("0x") || check.startsWith("0X")) {
                 value = Integer.parseInt(check.substring(2), 16);
             } else if (check.startsWith("0b")) {
                 value = Integer.parseInt(check.substring(2), 2);
