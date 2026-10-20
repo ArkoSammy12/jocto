@@ -24,7 +24,7 @@ public class OctoCodegen {
 
     public OctoCodegenResult generateCode(Collection<CodeElement> codeElements, Map<String, LabelDefinition> labelDefinitions, Map<InternalLabelKey, Integer> internalLabelDefinitions) {
         try {
-            CodegenContext codegenContext = new CodegenContext(labelDefinitions, internalLabelDefinitions);
+            OctoCodegenContext codegenContext = new OctoCodegenContext(this.programStart, labelDefinitions, internalLabelDefinitions);
             for (CodeElement codeElement : codeElements) {
                 this.consumePrimitive(codegenContext, codeElement);
             }
@@ -34,7 +34,7 @@ public class OctoCodegen {
         }
     }
 
-    private void consumePrimitive(CodegenContext codegenContext, CodeElement codeElement) throws OctoAssemblerException {
+    private void consumePrimitive(OctoCodegenContext codegenContext, CodeElement codeElement) throws OctoAssemblerException {
         if (codeElement instanceof LabelableElement labelableElement && labelableElement.getAddressArgument() instanceof AddressArgument.Unresolved unresolvedAddress) {
             switch (unresolvedAddress) {
                 case AddressArgument.NamedLabelReference(Token token) -> {
@@ -68,61 +68,6 @@ public class OctoCodegen {
                 case AddressArgument.InternalLabelReference(InternalLabelKey internalLabelKey) -> new OctoAssemblerException("Unresolved internal label '%s'".formatted(internalLabelKey), internalLabelKey.sourcePositionKey());
             };
         }
-    }
-
-    private class CodegenContext {
-
-        private final Map<String, LabelDefinition> labelDefinitions;
-        private final Map<InternalLabelKey, Integer> internalLabelDefinitions;
-        private final ArrayList<Byte> bytes = new ArrayList<>();
-
-        private CodegenContext(Map<String, LabelDefinition> labelDefinitions, Map<InternalLabelKey, Integer> internalLabelDefinitions) {
-            this.labelDefinitions = labelDefinitions;
-            this.internalLabelDefinitions = internalLabelDefinitions;
-        }
-
-        private Optional<LabelDefinition> getLabelDefinition(String name) {
-            return Optional.ofNullable(this.labelDefinitions.get(name));
-        }
-
-        private Optional<Integer> getInternalLabelDefinition(InternalLabelKey internalLabelKey) {
-            return Optional.ofNullable(this.internalLabelDefinitions.get(internalLabelKey));
-        }
-
-        private byte[] getBytes() throws OctoAssemblerException {
-            byte[] rawBytes = new byte[this.bytes.size()];
-            for (int i = 0; i < this.bytes.size(); i++) {
-                Byte byteElement = this.bytes.get(i);
-                rawBytes[i] = byteElement == null ? (byte) 0x00 : byteElement;
-            }
-            return rawBytes;
-        }
-
-        private void addBytes(byte[] bytes, int offset) throws OctoAssemblerException {
-            int absoluteOffset = offset - programStart;
-            if (absoluteOffset < 0) {
-                return;
-                //throw new IllegalArgumentException("Tried to write bytes to ROM before program start!");
-            }
-
-            int requiredSize = absoluteOffset + bytes.length;
-            if (requiredSize > this.bytes.size()) {
-                this.bytes.ensureCapacity(requiredSize);
-                while (requiredSize > this.bytes.size()) {
-                    this.bytes.add(null);
-                }
-            }
-
-            for (int i = 0; i < bytes.length; i++) {
-                int romOffset = i + absoluteOffset;
-                if (this.bytes.get(romOffset) == null) {
-                    this.bytes.set(romOffset, bytes[i]);
-                } else {
-                    throw new OctoAssemblerException("Attempted to write byte '%02X' at already occupied offset of '%04X'".formatted(bytes[i], offset));
-                }
-            }
-        }
-
     }
 
 }
