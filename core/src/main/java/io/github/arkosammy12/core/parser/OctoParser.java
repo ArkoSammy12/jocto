@@ -1055,7 +1055,7 @@ public class OctoParser {
             this.codeElements.add(codeElement);
         }
 
-        private void   addDirectiveDefinition(Token token, DirectiveDefinition newDirectiveDefinition) throws OctoAssemblerException {
+        private void addDirectiveDefinition(Token token, DirectiveDefinition newDirectiveDefinition) throws OctoAssemblerException {
             this.checkReservedName(token);
             String name = token.getLexeme();
             switch (newDirectiveDefinition) {
@@ -1066,7 +1066,7 @@ public class OctoParser {
                     }
 
                     Optional<NonConstantDirectiveDefinition> existingNonConstantDirectiveDefinition = this.getNonConstantDirective(name);
-                    if (existingNonConstantDirectiveDefinition.isPresent() && existingNonConstantDirectiveDefinition.get() instanceof AliasDefinition) {
+                    if (existingNonConstantDirectiveDefinition.isPresent() && existingNonConstantDirectiveDefinition.get() instanceof AliasDefinition && (newConstantDirectiveDefinition instanceof LabelDefinition || newConstantDirectiveDefinition instanceof NextDefinition)) {
                         throw new OctoAssemblerException("The constant directive name '%s' is already defined as an ':alias'!".formatted(name), token.getSourcePosition());
                     }
 

@@ -2,7 +2,6 @@
 # accidentally match one of the test file's file names. Make sure to write comments in their own dedicated lines!
 
 # Pending fixes (passes in c-octo, Octo and chiplet)
-chiplet-alias-constant-precedence.8o
 chiplet-err-form-feed-whitespace.8o
 chiplet-fractional-constant.8o
 
