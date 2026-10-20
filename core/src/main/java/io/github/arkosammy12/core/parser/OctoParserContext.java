@@ -28,22 +28,9 @@ class OctoParserContext {
     private boolean foundMainLabel;
 
     {
-        this.constantDirectiveDefinitionMap.put("OCTO_KEY_1", new ConstDefinition("OCTO_KEY_1", 1));
-        this.constantDirectiveDefinitionMap.put("OCTO_KEY_2", new ConstDefinition("OCTO_KEY_2", 2));
-        this.constantDirectiveDefinitionMap.put("OCTO_KEY_3", new ConstDefinition("OCTO_KEY_3", 3));
-        this.constantDirectiveDefinitionMap.put("OCTO_KEY_4", new ConstDefinition("OCTO_KEY_4", 12));
-        this.constantDirectiveDefinitionMap.put("OCTO_KEY_Q", new ConstDefinition("OCTO_KEY_Q", 4));
-        this.constantDirectiveDefinitionMap.put("OCTO_KEY_W", new ConstDefinition("OCTO_KEY_W", 5));
-        this.constantDirectiveDefinitionMap.put("OCTO_KEY_E", new ConstDefinition("OCTO_KEY_E", 6));
-        this.constantDirectiveDefinitionMap.put("OCTO_KEY_R", new ConstDefinition("OCTO_KEY_R", 13));
-        this.constantDirectiveDefinitionMap.put("OCTO_KEY_A", new ConstDefinition("OCTO_KEY_A", 7));
-        this.constantDirectiveDefinitionMap.put("OCTO_KEY_S", new ConstDefinition("OCTO_KEY_S", 8));
-        this.constantDirectiveDefinitionMap.put("OCTO_KEY_D", new ConstDefinition("OCTO_KEY_D", 9));
-        this.constantDirectiveDefinitionMap.put("OCTO_KEY_F", new ConstDefinition("OCTO_KEY_F", 14));
-        this.constantDirectiveDefinitionMap.put("OCTO_KEY_Z", new ConstDefinition("OCTO_KEY_Z", 10));
-        this.constantDirectiveDefinitionMap.put("OCTO_KEY_X", new ConstDefinition("OCTO_KEY_X", 0));
-        this.constantDirectiveDefinitionMap.put("OCTO_KEY_C", new ConstDefinition("OCTO_KEY_C", 11));
-        this.constantDirectiveDefinitionMap.put("OCTO_KEY_V", new ConstDefinition("OCTO_KEY_V", 15));
+        for (OctoBuiltInConstants octoBuiltInConstant : OctoBuiltInConstants.values()) {
+            this.constantDirectiveDefinitionMap.put(octoBuiltInConstant.getKey(), new ConstDefinition(octoBuiltInConstant.getKey(), octoBuiltInConstant.getValue()));
+        }
     }
 
     OctoParserContext(int programStart, SourceStream<Token> tokenStream) {
@@ -493,6 +480,42 @@ class OctoParserContext {
             }
         }
         return (byte) 0x00;
+    }
+
+    private enum OctoBuiltInConstants {
+        OCTO_KEY_1("OCTO_KEY_1", 1),
+        OCTO_KEY_2("OCTO_KEY_2", 2),
+        OCTO_KEY_3("OCTO_KEY_3", 3),
+        OCTO_KEY_4("OCTO_KEY_4", 12),
+        OCTO_KEY_Q("OCTO_KEY_Q", 4),
+        OCTO_KEY_W("OCTO_KEY_W", 5),
+        OCTO_KEY_E("OCTO_KEY_E", 6),
+        OCTO_KEY_R("OCTO_KEY_R", 13),
+        OCTO_KEY_A("OCTO_KEY_A", 7),
+        OCTO_KEY_S("OCTO_KEY_S", 8),
+        OCTO_KEY_D("OCTO_KEY_D", 9),
+        OCTO_KEY_F("OCTO_KEY_F", 14),
+        OCTO_KEY_Z("OCTO_KEY_Z", 10),
+        OCTO_KEY_X("OCTO_KEY_X", 0),
+        OCTO_KEY_C("OCTO_KEY_C", 11),
+        OCTO_KEY_V("OCTO_KEY_V", 15);
+
+        private final String key;
+        private final int value;
+
+        OctoBuiltInConstants(String key, int value) {
+            this.key = key;
+            this.value = value;
+        }
+
+        private String getKey() {
+            return this.key;
+        }
+
+        private int getValue() {
+            return this.value;
+        }
+
     }
 
 }
