@@ -11,6 +11,7 @@ import io.github.arkosammy12.core.token.*;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
 import static io.github.arkosammy12.core.token.FloatLiteralToken.toInt32JS;
@@ -706,11 +707,16 @@ public class OctoParser {
                 yield List.of();
             }
             case MONITOR -> {
+                AtomicBoolean baseIsRegister = new AtomicBoolean(false);
                 IntegerLiteralToken base = switch (parserContext.pollAsAddress16("Expected register or base address following ':monitor' directive!", directiveToken.getSourcePosition())) {
                     case IntegerLiteralToken integerLiteralToken -> integerLiteralToken;
-                    case RegisterLiteralToken registerLiteralToken -> new IntegerLiteralToken(registerLiteralToken.getRegisterIndex(), registerLiteralToken.getLexeme(), registerLiteralToken.getSourcePosition());
+                    case RegisterLiteralToken registerLiteralToken -> {
+                        baseIsRegister.set(true);
+                        yield new IntegerLiteralToken(registerLiteralToken.getRegisterIndex(), registerLiteralToken.getLexeme(), registerLiteralToken.getSourcePosition());
+                    }
                     case Token token -> parserContext.getNonConstantDirective(token).map(nonConstantDirectiveDefinition -> {
                         if (nonConstantDirectiveDefinition instanceof AliasDefinition aliasDefinition) {
+                            baseIsRegister.set(true);
                             return new IntegerLiteralToken(aliasDefinition.getRegisterIndex(), token.getLexeme(), token.getSourcePosition());
                         } else {
                             return null;
@@ -720,7 +726,12 @@ public class OctoParser {
                 Token target = parserContext.pollTokenOrThrow("Expected numeric value or format string as the ':monitor' directive target!", base.getSourcePosition());
                 switch (target) {
                     case StringLiteralToken _, IntegerLiteralToken _ -> {}
-                    case Token token -> parserContext.getConstantDirective(token).orElseThrow(() -> new OctoAssemblerException("Unresolved name '%s'!".formatted(token.getLexeme()), token.getSourcePosition()));
+                    case Token token -> {
+                        int value = parserContext.getConstantDirective(token).orElseThrow(() -> new OctoAssemblerException("Unresolved name '%s'!".formatted(token.getLexeme()), token.getSourcePosition())).getInt32Value();
+                        if (baseIsRegister.get() && !NumberLiteralToken.isUnsigned4Bits(base.getValue() + value)) {
+                            throw new OctoAssemblerException("The ':monitor' range does not fit within 4 bits. Must be in the range [0, 15]!", token.getSourcePosition());
+                        }
+                    }
                 }
                 yield List.of();
             }

@@ -22,7 +22,7 @@ public final class IntegerLiteralToken extends NumberLiteralToken {
     }
 
     public boolean isUnsigned4Bits() {
-        return this.value >= 0 && this.value <= 15;
+        return NumberLiteralToken.isUnsigned4Bits(this.value);
     }
 
     public boolean is8Bits() {
@@ -30,11 +30,11 @@ public final class IntegerLiteralToken extends NumberLiteralToken {
     }
 
     public boolean isUnsigned12Bits() {
-        return FloatLiteralToken.isUnsigned12Bits(this.value);
+        return NumberLiteralToken.isUnsigned12Bits(this.value);
     }
 
     public boolean isUnsigned16Bits() {
-        return FloatLiteralToken.isUnsigned16Bits(this.value);
+        return NumberLiteralToken.isUnsigned16Bits(this.value);
     }
 
     @Override

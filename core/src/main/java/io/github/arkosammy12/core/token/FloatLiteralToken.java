@@ -30,14 +30,6 @@ public final class FloatLiteralToken extends NumberLiteralToken {
         }
     }
 
-    public static boolean isUnsigned12Bits(int value) {
-        return value >= 0 && value <= 0xFFF;
-    }
-
-    public static boolean isUnsigned16Bits(int value) {
-        return value >= 0 && value <= 0xFFFF;
-    }
-
     public static int toUInt8JS(double x) {
         if (!Double.isFinite(x) || x == 0x0) {
             return 0;

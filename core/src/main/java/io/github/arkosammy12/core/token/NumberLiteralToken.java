@@ -8,4 +8,16 @@ public abstract sealed class NumberLiteralToken extends LiteralToken permits Flo
         super(lexeme, sourcePosition);
     }
 
+    public static boolean isUnsigned4Bits(int value) {
+        return value >= 0 && value <= 15;
+    }
+
+    public static boolean isUnsigned12Bits(int value) {
+        return value >= 0 && value <= 0xFFF;
+    }
+
+    public static boolean isUnsigned16Bits(int value) {
+        return value >= 0 && value <= 0xFFFF;
+    }
+
 }
