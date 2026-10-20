@@ -20,11 +20,7 @@ public abstract sealed class LiteralToken extends AbstractToken permits NumberLi
         if (stringLiteralToken.isPresent()) {
             return stringLiteralToken;
         }
-        Optional<IntegerLiteralToken> integerLiteralToken = IntegerLiteralToken.tryParse(lexeme, sourcePosition);
-        if (integerLiteralToken.isPresent()) {
-            return integerLiteralToken;
-        }
-        return FloatLiteralToken.tryParse(lexeme, sourcePosition);
+        return NumberLiteralToken.tryParse(lexeme, sourcePosition);
     }
 
 }
