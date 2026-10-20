@@ -8,7 +8,7 @@ import io.github.arkosammy12.core.token.Token;
 
 import java.util.*;
 
-public final class StringModeDefinition extends DirectiveDefinition implements ExpandableDirective {
+public final class StringModeDefinition extends ExpandableDirectiveDefinition {
 
     private final Map<StringLiteralToken, Collection<Token>> alphabets = new HashMap<>();
     private int calls;

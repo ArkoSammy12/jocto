@@ -10,7 +10,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
-public final class MacroDefinition extends DirectiveDefinition implements ExpandableDirective {
+public final class MacroDefinition extends ExpandableDirectiveDefinition {
 
     private final List<Token> arguments;
     private final Collection<Token> tokenBody;

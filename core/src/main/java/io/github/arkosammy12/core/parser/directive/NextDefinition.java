@@ -1,6 +1,6 @@
 package io.github.arkosammy12.core.parser.directive;
 
-public final class NextDefinition extends DirectiveDefinition implements ConstantDirectiveDefinition {
+public final class NextDefinition extends ConstantDirectiveDefinition {
 
     private final int address;
 

@@ -2,29 +2,33 @@ package io.github.arkosammy12.core.parser.directive;
 
 import io.github.arkosammy12.core.token.FloatLiteralToken;
 
-public sealed interface ConstantDirectiveDefinition permits CalcDefinition, ConstDefinition, LabelDefinition, NextDefinition {
+public abstract sealed class ConstantDirectiveDefinition extends DirectiveDefinition permits ConstDefinition, CalcDefinition, LabelDefinition, NextDefinition {
 
-    int getInt32Value();
+    public ConstantDirectiveDefinition(String name) {
+        super(name);
+    }
 
-    int getUInt8Value();
+    abstract public int getInt32Value();
 
-    double getDoubleValue();
+    abstract public int getUInt8Value();
 
-    default boolean isUnsigned4Bits() {
+    abstract public double getDoubleValue();
+
+    public boolean isUnsigned4Bits() {
         int value = this.getInt32Value();
         return value >= 0 && value <= 15;
     }
 
-    default boolean is8Bits() {
+    public boolean is8Bits() {
         int value = this.getInt32Value();
         return value >= -128 && value <= 255;
     }
 
-    default boolean isUnsigned12Bits() {
+    public boolean isUnsigned12Bits() {
         return FloatLiteralToken.isUnsigned12Bits(this.getInt32Value());
     }
 
-     default boolean isUnsigned16Bits() {
+    public boolean isUnsigned16Bits() {
         return FloatLiteralToken.isUnsigned16Bits(this.getInt32Value());
     }
 

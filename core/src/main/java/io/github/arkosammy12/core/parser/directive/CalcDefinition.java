@@ -3,7 +3,7 @@ package io.github.arkosammy12.core.parser.directive;
 import static io.github.arkosammy12.core.token.FloatLiteralToken.toInt32JS;
 import static io.github.arkosammy12.core.token.FloatLiteralToken.toUInt8JS;
 
-public final class CalcDefinition extends DirectiveDefinition implements ConstantDirectiveDefinition {
+public final class CalcDefinition extends ConstantDirectiveDefinition {
 
     private final double value;
 

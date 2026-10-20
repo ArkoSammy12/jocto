@@ -1,6 +1,6 @@
 package io.github.arkosammy12.core.parser.directive;
 
-public final class AliasDefinition extends DirectiveDefinition {
+public final class AliasDefinition extends NonConstantDirectiveDefinition {
 
     private final int registerIndex;
 

@@ -4,7 +4,6 @@ import io.github.arkosammy12.core.assembler.OctoAssembler;
 import io.github.arkosammy12.core.lexer.SourceFile;
 import io.github.arkosammy12.core.result.OctoAssemblerResult;
 import io.github.arkosammy12.core.result.OctoCodegenResult;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
@@ -30,7 +29,7 @@ public class OctoAssemblerTests {
 
     @TestFactory
     @SuppressWarnings("resource")
-    public Stream<DynamicTest> runExpectedSuccessTests() throws URISyntaxException, IOException {
+    public Stream<DynamicTest> runCOctoTests() throws URISyntaxException, IOException {
         URL cOctoTestsUrl = this.getClass().getClassLoader().getResource(C_OCTO_TEST_DIR);
         assumeFalse(cOctoTestsUrl == null, () -> "The '%s' test directory URL could not be found. Aborting tests!".formatted(C_OCTO_TEST_DIR));
 
