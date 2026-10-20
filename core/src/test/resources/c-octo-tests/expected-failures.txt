@@ -1,1 +1,40 @@
+# Please keep file names in their own individual lines!. Every line is interpreted as a file name
+
+# Pending fixes (passes in c-octo, Octo and chiplet)
+chiplet-alias-constant-precedence.8o
+chiplet-err-form-feed-whitespace.8o
+chiplet-fractional-constant.8o
+chiplet-macro-duplicate-parameter.8o
+
+# We deliberately don't want to count the lexeme '"clear"' as the instruction keyword 'clear' and same for other keywords
+# Higher priority because these tests do pass for c-octo, Octo and chiplet, so we might have to reconsider
+chiplet-quoted-keyword.8o
+chiplet-macro-quoted-keyword.8o
+
+# Ignored due to unimplemented ':monitor' format parsing
+chiplet-err-monitor-dangling-percent.8o
+chiplet-err-monitor-unknown-format.8o
+chiplet-err-monitor-zero-count.8o
+
+# c-octo fails these tests
+chiplet-err-monitor-literal-text.8o
+chiplet-exit-alias-precedence.8o
+chiplet-fractional-logical-not.8o
+# c-octo keeps labels and constants in the same table. Doesn't make sense to be able to redefine a :const with a label
 chiplet-constant-label-precedence.8o
+# Same, but vice versa
+chiplet-label-constant-precedence.8o
+chiplet-macro-register-name.8o
+chiplet-quoted-number-expression.8o
+chiplet-quoted-numeric-label.8o
+chiplet-rom-read-no-wrap.8o
+
+# Octo and c-octo fail these tests
+chiplet-extension-calculated-high-origin.8o
+chiplet-extension-plain-high-origin.8o
+chiplet-exception-err-calculated-negative-origin.8o
+chiplet-exception-err-generated-loop-overflow.8o
+chiplet-exception-err-origin-overflow.8o
+chiplet-exception-err-repeated-else.8o
+chiplet-extension-pointer16-alias.8o
+chiplet-extension-pointer24-forward.8o
