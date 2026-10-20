@@ -2,7 +2,6 @@
 # accidentally match one of the test file's file names. Make sure to write comments in their own dedicated lines!
 
 # Pending fixes (passes in c-octo, Octo and chiplet)
-chiplet-err-form-feed-whitespace.8o
 chiplet-fractional-constant.8o
 
 # We deliberately don't want to count the lexeme '"clear"' as the instruction keyword 'clear' and same for other keywords
@@ -27,6 +26,7 @@ chiplet-macro-register-name.8o
 chiplet-quoted-number-expression.8o
 chiplet-quoted-numeric-label.8o
 chiplet-rom-read-no-wrap.8o
+chiplet-vertical-tab-whitespace.8o
 
 # Octo and c-octo fail these tests
 chiplet-extension-calculated-high-origin.8o

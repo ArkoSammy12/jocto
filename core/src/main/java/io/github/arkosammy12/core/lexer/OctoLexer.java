@@ -44,8 +44,7 @@ public class OctoLexer {
                     }
                     case '\"' -> {
                         switch (tokenizerContext.getState()) {
-                            case WHITESPACE ->
-                                    tokenizerContext.beginToken(newSourceCharacter); // If going from whitespace to a '"', begin a new string token
+                            case WHITESPACE -> tokenizerContext.beginToken(newSourceCharacter); // If going from whitespace to a '"', begin a new string token
                             case TOKEN -> {
                                 // If going from a regular token to a quote, finish the previous token, and begin a new string quote
                                 tokenizerContext.finishToken();
@@ -67,21 +66,16 @@ public class OctoLexer {
                         }
                     }
                     default -> {
-                        if (Character.isWhitespace(newCharacter)) {
+                        if (isOctoWhitespace(newCharacter)) {
                             switch (tokenizerContext.getState()) {
-                                case WHITESPACE -> {
-                                } // Do nothing if going from whitespace to whitespace :v
-                                case TOKEN ->
-                                        tokenizerContext.finishToken(); // Finish the current token if going from token to whitespace
-                                case STRING_TOKEN ->
-                                        tokenizerContext.appendCharacter(newSourceCharacter); // Append the whitespace to the current string token
+                                case WHITESPACE -> {} // Do nothing if going from whitespace to whitespace :v
+                                case TOKEN -> tokenizerContext.finishToken(); // Finish the current token if going from token to whitespace
+                                case STRING_TOKEN -> tokenizerContext.appendCharacter(newSourceCharacter); // Append the whitespace to the current string token
                             }
                         } else {
                             switch (tokenizerContext.getState()) {
-                                case WHITESPACE ->
-                                        tokenizerContext.beginToken(newSourceCharacter); // Begin a new token if going from whitespace to non-whitespace
-                                case TOKEN, STRING_TOKEN ->
-                                        tokenizerContext.appendCharacter(newSourceCharacter); // Append the current non-whitespace character to the current token
+                                case WHITESPACE -> tokenizerContext.beginToken(newSourceCharacter); // Begin a new token if going from whitespace to non-whitespace
+                                case TOKEN, STRING_TOKEN -> tokenizerContext.appendCharacter(newSourceCharacter); // Append the current non-whitespace character to the current token
                             }
                         }
                     }
@@ -89,8 +83,7 @@ public class OctoLexer {
             }
 
             return switch (tokenizerContext.getState()) {
-                case STRING_TOKEN ->
-                        new OctoLexerResult.Error("Unclosed string literal!", tokenizerContext.getTokenPosition());
+                case STRING_TOKEN -> new OctoLexerResult.Error("Unclosed string literal!", tokenizerContext.getTokenPosition());
                 case TOKEN, WHITESPACE -> {
                     tokenizerContext.finishToken();
                     yield new OctoLexerResult.Ok(new SourceStream<>(tokenizerContext.getTokens()));
@@ -101,6 +94,12 @@ public class OctoLexer {
         }
     }
 
+    public static boolean isOctoWhitespace(char c) {
+        return switch (c) {
+            case ' ', '\t', '\r', '\n' -> true;
+            default -> false;
+        };
+    }
 
     private static class TokenizerContext {
 
