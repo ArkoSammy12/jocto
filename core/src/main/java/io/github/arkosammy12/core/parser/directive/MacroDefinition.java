@@ -35,7 +35,7 @@ public final class MacroDefinition extends ExpandableDirectiveDefinition {
         Collection<Token> expandedTokens = new ArrayList<>();
 
         expansionLoop: for (Token bodyToken : this.tokenBody) {
-            for (int i = 0; i < this.arguments.size(); i++) {
+            for (int i = this.arguments.size() - 1; i >= 0; i--) {
                 Token argumentToken = this.arguments.get(i);
                 if (Objects.equals(argumentToken.getLexeme(), bodyToken.getLexeme())) {
                     expandedTokens.add(expansionArguments[i]);

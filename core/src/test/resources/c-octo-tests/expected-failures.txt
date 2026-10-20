@@ -4,7 +4,6 @@
 chiplet-alias-constant-precedence.8o
 chiplet-err-form-feed-whitespace.8o
 chiplet-fractional-constant.8o
-chiplet-macro-duplicate-parameter.8o
 
 # We deliberately don't want to count the lexeme '"clear"' as the instruction keyword 'clear' and same for other keywords
 # Higher priority because these tests do pass for c-octo, Octo and chiplet, so we might have to reconsider
