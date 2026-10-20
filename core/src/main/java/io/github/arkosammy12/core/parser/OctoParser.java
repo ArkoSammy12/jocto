@@ -374,7 +374,7 @@ public class OctoParser {
                 case EXIT -> List.of(new ExitStatement(parserContext.getHere()));
                 case SAVE_FLAGS -> List.of(new SaveFlagsStatement(parserContext.getHere(), parserContext.pollAsRegister("Expected register operand in 'saveflags' statement!", instructionStatementNameToken.getSourcePosition()).getRegisterIndex()));
                 case LOAD_FLAGS -> List.of(new LoadFlagsStatement(parserContext.getHere(), parserContext.pollAsRegister("Expected register operand in 'loadflags' statement!", instructionStatementNameToken.getSourcePosition()).getRegisterIndex()));
-                case PLANE -> List.of(new SetBitplanesStatement(parserContext.getHere(), parserContext.pollAsNibbleValue("Expected nibble operand in 'plane' statement!", instructionStatementNameToken.getSourcePosition()).getValue()));
+                case PLANE -> List.of(new SetBitplanesStatement(parserContext.getHere(), parserContext.pollAs2BitValue("Expected 2 bit operand operand in 'plane' statement!", instructionStatementNameToken.getSourcePosition()).getValue()));
                 case AUDIO -> List.of(new AudioStatement(parserContext.getHere()));
                 case PITCH -> {
                     AssignmentOperatorToken assignmentOperatorToken = parserContext.pollTokenOrThrow(AssignmentOperatorToken.class, "Expected assignment operator ':=' in 'pitch' assignment!", instructionStatementNameToken.getSourcePosition(), token -> "Unknown assignment operator '%s' in 'pitch' statement!".formatted(token.getLexeme()));
@@ -1217,6 +1217,25 @@ public class OctoParser {
                     } else {
                         throw new OctoAssemblerException("Expected register argument, got '%s'!".formatted(nameToken.getLexeme()), nameToken.getSourcePosition());
                     }
+                }
+            };
+        }
+
+        private IntegerLiteralToken pollAs2BitValue(String error, SourcePosition sourcePosition) throws OctoAssemblerException {
+            return switch (this.pollTokenOrThrow(error, sourcePosition)) {
+                case IntegerLiteralToken integerLiteralToken -> {
+                    if (integerLiteralToken.isUnsigned2Bits()) {
+                        yield integerLiteralToken;
+                    } else {
+                        throw new OctoAssemblerException("The integer argument '%d' does not fit in 2 bits. Must be in the range [0, 3]!".formatted(integerLiteralToken.getValue()), integerLiteralToken.getSourcePosition());
+                    }
+                }
+                case Token nameToken -> {
+                    Optional<ConstantDirectiveDefinition> constantDirectiveDefinition = this.getConstantDirective(nameToken);
+                    if (constantDirectiveDefinition.isEmpty()) {
+                        throw new OctoAssemblerException("Unresolved directive name '%s'!".formatted(nameToken.getLexeme()), nameToken.getSourcePosition());
+                    }
+                    yield new IntegerLiteralToken(constantDirectiveDefinition.get().getUInt8Value() & 0xF, nameToken.getLexeme(), nameToken.getSourcePosition());
                 }
             };
         }

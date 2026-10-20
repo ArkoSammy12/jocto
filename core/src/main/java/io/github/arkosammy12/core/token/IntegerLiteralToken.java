@@ -17,6 +17,10 @@ public final class IntegerLiteralToken extends NumberLiteralToken {
         return this.value;
     }
 
+    public boolean isUnsigned2Bits() {
+        return this.value >= 0 && this.value <= 3;
+    }
+
     public boolean isUnsigned4Bits() {
         return this.value >= 0 && this.value <= 15;
     }
