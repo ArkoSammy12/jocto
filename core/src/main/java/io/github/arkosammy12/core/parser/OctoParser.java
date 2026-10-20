@@ -405,7 +405,14 @@ public class OctoParser {
                     throw new OctoAssemblerException("Raw integer literal '%d' does not fit in 8 bits [-128, 255]".formatted(integerLiteralToken.getValue()), integerLiteralToken.getSourcePosition());
                 }
             }
-            case StringLiteralToken stringLiteralToken -> parserContext.checkReservedName(stringLiteralToken);
+            case StringLiteralToken stringLiteralToken -> {
+                Optional<? extends ReservedNameToken> asKeyword = ReservedNameToken.tryParse(stringLiteralToken.getResolved(), stringLiteralToken.getSourcePosition());
+                if (asKeyword.isPresent()) {
+                    yield this.parseToken(parserContext, asKeyword.get());
+                } else {
+                    yield parserContext.checkReservedName(stringLiteralToken);
+                }
+            }
         };
     }
 

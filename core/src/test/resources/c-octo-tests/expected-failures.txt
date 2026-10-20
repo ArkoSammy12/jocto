@@ -4,11 +4,6 @@
 # Pending fixes (passes in c-octo, Octo and chiplet)
 chiplet-fractional-constant.8o
 
-# We deliberately don't want to count the lexeme '"clear"' as the instruction keyword 'clear' and same for other keywords
-# Higher priority because these tests do pass for c-octo, Octo and chiplet, so we might have to reconsider
-chiplet-quoted-keyword.8o
-chiplet-macro-quoted-keyword.8o
-
 # Ignored due to unimplemented ':monitor' format parsing
 chiplet-err-monitor-dangling-percent.8o
 chiplet-err-monitor-unknown-format.8o
