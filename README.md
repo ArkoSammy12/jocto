@@ -4,9 +4,12 @@ An implementation of the CHIP-8 Octo assembler written in Java
 * [jocto](#jocto)
   * [Command-line Usage](#command-line-usage)
   * [Building](#building)
+  * [Notes](#notes)
   * [References](#references)
 
 # Command-line Usage
+
+Make sure to have a Java Development Kit (JDK) targeting Java 25 or later to run the built `.jar` file.
 
 You can run the assembler with the `java -jar jocto-x.y.z.jar <args>` command. It is recommended to alias the JVM `-jar` invocation.
 
@@ -43,6 +46,18 @@ To build the project, clone or download the repository and run the following fro
 
 An output `.jar` should have then been generated in `/target/jocto-x.y.z.jar`.
 To skip the automated tests, append the `-DskipTests` to the build command.
+
+# Notes
+
+The implementation of this assembler is largely based on the `c-octo` implementation of the Octo language by John Earnest.
+Most semantics for directive arguments should follow that implementation.
+
+**All debug directives (`:breakpoint`, `:monitor`, `:assert`) are parsed for correct arguments but they are not currently
+exposed as an API, and therefore do nothing. The `:monitor` directive is parsed for correct arguments, but the format string is not yet verified. *jocto* will ignore
+incorrect usage of or unknown format specifiers within the format string and not produce an assembler error.**
+
+*jocto* runs the [c-octo-tests](https://github.com/gulrak/chiplet/tree/dev-road-to-2.0/test/c-octo-tests) test suite in *chiplet*'s repository, which includes *chiplet* specific tests and [c-octo's own tests](https://github.com/JohnEarnest/c-octo/tree/main/tests).
+A list of current failures can be found in the [expected-failures.txt](https://github.com/ArkoSammy12/jocto/blob/master/core/src/test/resources/c-octo-tests/expected-failures.txt) file.
 
 # References
 - [John Earnest - Octo](https://github.com/JohnEarnest/Octo)
