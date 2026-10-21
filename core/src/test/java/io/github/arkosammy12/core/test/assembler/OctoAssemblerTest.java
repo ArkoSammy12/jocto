@@ -20,7 +20,7 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.junit.jupiter.api.Assumptions.*;
 
-public class OctoAssemblerTests {
+public class OctoAssemblerTest {
 
     private static final String C_OCTO_TEST_DIR = "c-octo-tests";
     private static final String EXPECTED_FAILURES_FILE_NAME = "expected-failures.txt";
