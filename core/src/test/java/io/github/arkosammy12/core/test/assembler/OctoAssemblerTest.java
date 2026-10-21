@@ -4,7 +4,6 @@ import io.github.arkosammy12.core.assembler.OctoAssembler;
 import io.github.arkosammy12.core.lexer.SourceFile;
 import io.github.arkosammy12.core.result.OctoAssemblerResult;
 import io.github.arkosammy12.core.result.OctoCodegenResult;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
 
@@ -49,35 +48,12 @@ public class OctoAssemblerTests {
                         byte[] expected = Files.readAllBytes(binaryFilePath);
                         int firstDifference = compareBytes(produced, expected);
                         if (firstDifference >= 0) {
-                            if (expectedFailures.contains(sourceFilePath.getFileName().toString())) {
-                                abort(() -> """
-                                    Skipping failure for source file test: %s
-                                    """.formatted(sourceFilePath.getFileName()));
-                            } else {
-                                String expectedByteString = firstDifference < expected.length ? "%d ($%02X)".formatted(expected[firstDifference], expected[firstDifference]) : "N/A";
-                                String actualByteString = firstDifference < produced.length ? "%d ($%02X)".formatted(produced[firstDifference], produced[firstDifference]) : "N/A";
-                                fail(() -> """
-                                    Binary mismatch for source file: %s
-                                    Mismatched byte found at offset: %d ($%04X)
-                                    Expected byte: %s
-                                    Actual byte: %s
-                                    """.formatted(sourceFilePath.getFileName(), firstDifference, firstDifference, expectedByteString, actualByteString));
-                            }
+                            String expectedByteString = firstDifference < expected.length ? formatByte(expected[firstDifference]) : "N/A";
+                            String actualByteString = firstDifference < produced.length ? formatByte(produced[firstDifference]) : "N/A";
+                            this.failCOctoTest(sourceFilePath, "Mismatched byte found at offset: %s".formatted(formatOffset(firstDifference)), expectedByteString, actualByteString, expectedFailures);
                         }
                     }
-                    case OctoAssemblerResult result -> {
-                        if (expectedFailures.contains(sourceFilePath.getFileName().toString())) {
-                            abort(() -> """
-                                    Skipping failure for source file test: %s
-                                    """.formatted(sourceFilePath.getFileName()));
-                        } else {
-                            fail(() -> """
-                                    Failed to assemble source file: %s
-                                    Expected: Successful assembly with no errors
-                                    Actual: %s
-                                    """.formatted(sourceFilePath.getFileName(), result.getString()));
-                        }
-                    }
+                    case OctoAssemblerResult result -> this.failCOctoTest(sourceFilePath, "Failed to assemble source file", "Successful assembly with no errors", result.getString(), expectedFailures);
                 }
                 return;
             }
@@ -88,27 +64,47 @@ public class OctoAssemblerTests {
                 switch (octoAssemblerResult) {
                     case OctoAssemblerResult.Error _ -> {}
                     case OctoAssemblerResult.Ok ok -> {
-                        if (expectedFailures.contains(sourceFilePath.getFileName().toString())) {
-                            abort(() -> """
-                                    Skipping failure for source file test: %s
-                                    """.formatted(sourceFilePath.getFileName()));
-                        } else {
-                            String errorString = Files.readAllLines(errorFilePath).stream().map(line -> line.replace("\n", "")).filter(line -> !line.isBlank()).collect(Collectors.joining(". "));
-                            fail(() -> """
-                                    Expected assembly error but assembly succeeded for source file: %s
-                                    Expected: %s
-                                    Actual: %s
-                                    """.formatted(sourceFilePath.getFileName(), errorString, ok.getString()));
-                        }
+                        String errorString = Files.readAllLines(errorFilePath).stream().map(line -> line.replace("\n", "")).filter(line -> !line.isBlank()).collect(Collectors.joining(". "));
+                        this.failCOctoTest(sourceFilePath, "Expected assembly error but assembly succeeded!", errorString, ok.getString(), expectedFailures);
                     }
                 }
                 return;
             }
-            Assumptions.abort("Found no matching binary or error output file for Octo source file '%s'. Aborting!".formatted(sourceFilePath));
+            abort("Found no matching binary or error output file for Octo source file '%s'. Aborting!".formatted(sourceFilePath));
         }));
     }
 
-    public int compareBytes(byte[] first, byte[] second) {
+    private static String formatByte(int value) {
+        return "%d ($%02X)".formatted(value, value);
+    }
+
+    private static String formatOffset(int value) {
+        return "%d ($%04X)".formatted(value, value);
+    }
+
+    private void failCOctoTest(Path sourceFilePath, String reason, String expected, String actual, Collection<String> expectedFailures) {
+        String sourceFileName = sourceFilePath.getFileName().toString();
+        boolean isExpected = expectedFailures.contains(sourceFileName);
+        String failureText = """
+                %s: %s
+                Reason: %s
+                Expected: %s
+                Actual: %s
+                """.formatted(
+                        isExpected ? "Skipping failed c-octo test for source file" : "Failed c-octo test for source file",
+                        sourceFileName,
+                        reason,
+                        expected,
+                        actual
+                );
+        if (isExpected) {
+            abort(failureText);
+        } else {
+            fail(failureText);
+        }
+    }
+
+    public static int compareBytes(byte[] first, byte[] second) {
         int minLength = Math.min(first.length, second.length);
         for (int i = 0; i < minLength; i++) {
             if (first[i] != second[i]) {
