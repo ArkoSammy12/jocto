@@ -17,7 +17,7 @@
     <artifactId>jocto</artifactId>
 
     <!-- Change this for everything else (and in the child submodules too of course) -->
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <packaging>pom</packaging>
     <modules>
         <module>core</module>
