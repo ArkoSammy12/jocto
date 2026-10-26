@@ -9,7 +9,7 @@ import static io.github.arkosammy12.core.lexer.OctoLexerContext.TokenizerState.S
 
 public class OctoLexer {
 
-    public OctoLexerResult tokenize(SourceStream<SourceCharacter> characterStream) {
+    public OctoLexerResult lex(SourceStream<SourceCharacter> characterStream) {
         try {
             OctoLexerContext lexerContext = new OctoLexerContext(characterStream);
             while (!lexerContext.getCharacterStream().isEmpty()) {

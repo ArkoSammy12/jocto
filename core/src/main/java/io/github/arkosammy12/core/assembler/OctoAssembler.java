@@ -26,14 +26,14 @@ public class OctoAssembler {
 
     public OctoAssemblerResult assemble(SourceFile sourceFile) {
         OctoLexer octoLexer = new OctoLexer();
-        return switch (octoLexer.tokenize(sourceFile.createSourceCharacterStream())) {
+        return switch (octoLexer.lex(sourceFile.createSourceCharacterStream())) {
             case OctoLexerResult.Error lexerError ->  lexerError;
             case OctoLexerResult.Ok lexerOk -> {
                 if (this.stopAfterAssemblyStage == OctoAssemblyStage.LEXING) {
                     yield lexerOk;
                 }
                 OctoParser octoParser = new OctoParser(this.programStart);
-                yield switch (octoParser.parseTokens(lexerOk.tokenStream())) {
+                yield switch (octoParser.parse(lexerOk.tokenStream())) {
                     case OctoParserResult.Error parserError -> parserError;
                     case OctoParserResult.Ok parserOk -> {
                         if (this.stopAfterAssemblyStage == OctoAssemblyStage.PARSING) {

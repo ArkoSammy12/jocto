@@ -26,7 +26,7 @@ public class OctoParser {
         this.programStart = programStart;
     }
 
-    public OctoParserResult parseTokens(SourceStream<Token> tokenStream) {
+    public OctoParserResult parse(SourceStream<Token> tokenStream) {
         try {
             OctoParserContext parserContext = new OctoParserContext(this.programStart, tokenStream);
 
