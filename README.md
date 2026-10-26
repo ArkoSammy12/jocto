@@ -16,12 +16,17 @@ You can run the assembler with the `java -jar jocto-x.y.z.jar <args>` command. I
 The CLI options are as follows:
 
 ```
-Usage: jocto [-hV] -i=<inputPath> [-o=<outputPath>]
+Usage: jocto [-hnV] [-b=<baseAddress>] -i=<inputPath> [-o=<outputPath>]
 Assembles the provided .8o source file
+  -b, --base-address=<baseAddress>
+                            The base address of the assembled .ch8 binary
+                              program
   -h, --help                Show this help message and exit.
-  -i, --input=<inputPath>   The path of the .8o source file to assemble
-  -o, --output=<outputPath> The path of the assembled binary file, or input.out.
-                              ch8
+  -i, --input=<inputPath>   The path of the Octo source file to assemble
+  -n, --no-overwrite        Errors if the output file path already exists as a
+                              file
+  -o, --output=<outputPath> The path of the assembled CHIP-8 binary program
+                              file, or input.ch8
   -V, --version             Print version information and exit.
 ```
 
@@ -60,7 +65,7 @@ incorrect usage of or unknown format specifiers within the format string and not
 A list of current failures can be found in the [expected-failures.txt](https://github.com/ArkoSammy12/jocto/blob/master/core/src/test/resources/c-octo-tests/expected-failures.txt) file.
 
 # References
-- [John Earnest - Octo](https://github.com/JohnEarnest/Octo)
+- [John Earnest - Octo](https://github.com/JohnEarnest/Octo)  
 - [John Earnest - c-octo](https://github.com/JohnEarnest/c-octo)
 - [Timendus - chipcode](https://github.com/Timendus/chipcode)
 - [Timendus - Octopus2](https://github.com/Timendus/chipcode/tree/main/octopus2)
