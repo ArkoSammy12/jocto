@@ -64,6 +64,9 @@ incorrect usage of or unknown format specifiers within the format string and not
 *jocto* runs the [c-octo-tests](https://github.com/gulrak/chiplet/tree/dev-road-to-2.0/test/c-octo-tests) test suite in *chiplet*'s repository, which includes *chiplet* specific tests and [c-octo's own tests](https://github.com/JohnEarnest/c-octo/tree/main/tests).
 A list of current failures can be found in the [expected-failures.txt](https://github.com/ArkoSammy12/jocto/blob/master/core/src/test/resources/c-octo-tests/expected-failures.txt) file.
 
+# License
+This project is licensed under the [MIT License](LICENSE).
+
 # References
 - [John Earnest - Octo](https://github.com/JohnEarnest/Octo)  
 - [John Earnest - c-octo](https://github.com/JohnEarnest/c-octo)
