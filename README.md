@@ -7,7 +7,7 @@ An implementation of the CHIP-8 Octo assembler written in Java
   * [Notes](#notes)
   * [References](#references)
 
-# Command-line Usage
+## Command-line Usage
 
 Make sure to have a Java Development Kit (JDK) targeting Java 25 or later to run the built `.jar` file.
 
@@ -30,20 +30,20 @@ Assembles the provided .8o source file
   -V, --version             Print version information and exit.
 ```
 
-# Building
+## Building
 
 *jocto* is written in Java 25, so a Java Development Kit (JDK) targeting Java 25 or later to build this project.
 
 Maven is used as the build and dependency management solution, though a wrapper is provided to avoid a local installation.
 To build the project, clone or download the repository and run the following from the top-level directory:
 
-## Windows
+### Windows
 
 ```
 .\mvnw clean package
 ```
 
-## macOS/Linux
+### macOS/Linux
 
 ```
 ./mvnw clean package
@@ -52,12 +52,12 @@ To build the project, clone or download the repository and run the following fro
 An output `.jar` should have then been generated in `/target/jocto-x.y.z.jar`.
 To skip the automated tests, append the `-DskipTests` to the build command.
 
-# Notes
+## Notes
 
 The implementation of this assembler is largely based on the `c-octo` implementation of the Octo language by John Earnest.
 Most semantics for directive arguments should follow that implementation.
 
-**All debug directives (`:breakpoint`, `:monitor`, `:assert`) are parsed for correct arguments but they are not currently
+**All debug directives (`:breakpoint`, `:monitor`, `:assert`) are parsed for correct arguments, but they are not currently
 exposed as an API, and therefore do nothing. The `:monitor` directive is parsed for correct arguments, but the format string is not yet verified. *jocto* will ignore
 incorrect usage of or unknown format specifiers within the format string and not produce an assembler error.**
 
@@ -67,7 +67,7 @@ A list of current failures can be found in the [expected-failures.txt](https://g
 # License
 This project is licensed under the [MIT License](LICENSE).
 
-# References
+## References
 - [John Earnest - Octo](https://github.com/JohnEarnest/Octo)  
 - [John Earnest - c-octo](https://github.com/JohnEarnest/c-octo)
 - [Timendus - chipcode](https://github.com/Timendus/chipcode)
