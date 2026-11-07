@@ -11,7 +11,7 @@ An implementation of the CHIP-8 Octo assembler written in Java
 
 Make sure to have a Java Development Kit (JDK) targeting Java 25 or later to run the built `.jar` file.
 
-You can run the assembler with the `java -jar jocto-x.y.z.jar <args>` command. It is recommended to alias the JVM `-jar` invocation.
+You can run the assembler with the `java -jar  -x.y.z.jar <args>` command. It is recommended to alias the JVM `-jar` invocation.
 
 The CLI options are as follows:
 

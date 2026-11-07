@@ -21,7 +21,7 @@ public final class MavenProperties {
             throw new RuntimeException("Could not load app.properties", e);
         }
         VERSION = props.getProperty("version", "unknown");
-        ARTIFACT_ID = props.getProperty("artifact.id", "jemu");
+        ARTIFACT_ID = props.getProperty("artifact.id", "jocto");
         BUILD_DATE = props.getProperty("build.date", "unknown");
         AUTHOR = props.getProperty("author", "unknown");
     }
