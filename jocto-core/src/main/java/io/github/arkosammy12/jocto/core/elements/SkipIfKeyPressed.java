@@ -1,0 +1,29 @@
+package io.github.arkosammy12.jocto.core.elements;
+
+public final class SkipIfKeyPressed extends SkipInstructionElement {
+
+    public SkipIfKeyPressed(int offset, int x) {
+        super(offset, x);
+    }
+
+    @Override
+    public SkipInstructionElement invertCondition() {
+        return new SkipIfKeyNotPressed(this.offset, this.x);
+    }
+
+    @Override
+    public int getSizeInBytes() {
+        return 2;
+    }
+
+    @Override
+    public BytesResult getBytes() {
+        return new BytesResult.Data(fromXNN(0xE, this.x, 0x9E));
+    }
+
+    @Override
+    public String toString() {
+        return "SkipIfKeyPressed[%s, x=0x%01X]".formatted(this.getStringBaseContents(), this.x);
+    }
+
+}

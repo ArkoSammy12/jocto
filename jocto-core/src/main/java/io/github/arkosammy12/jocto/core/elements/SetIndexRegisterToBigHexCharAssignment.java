@@ -1,0 +1,27 @@
+package io.github.arkosammy12.jocto.core.elements;
+
+public final class SetIndexRegisterToBigHexCharAssignment extends Assignment {
+
+    private final int x;
+
+    public SetIndexRegisterToBigHexCharAssignment(int offset, int x) {
+        super(offset);
+        this.x = x;
+    }
+
+    @Override
+    public int getSizeInBytes() {
+        return 2;
+    }
+
+    @Override
+    public BytesResult getBytes() {
+        return new BytesResult.Data(fromXNN(0xF, this.x, 0x30));
+    }
+
+    @Override
+    public String toString() {
+        return "SetIndexRegisterToBigHexCharAssignment[%s, x=0x%01X]".formatted(this.getStringBaseContents(), this.x);
+    }
+
+}

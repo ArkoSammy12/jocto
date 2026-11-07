@@ -1,0 +1,27 @@
+package io.github.arkosammy12.jocto.core.elements;
+
+public final class ScrollDownStatement extends Statement {
+
+    private final int n;
+
+    public ScrollDownStatement(int offset, int n) {
+        super(offset);
+        this.n = n;
+    }
+
+    @Override
+    public int getSizeInBytes() {
+        return 2;
+    }
+
+    @Override
+    public BytesResult getBytes() {
+        return new BytesResult.Data(fromN(0x00C, this.n));
+    }
+
+    @Override
+    public String toString() {
+        return "ScrollDownStatement[%s, n=0x%01X]".formatted(this.getStringBaseContents(), this.n);
+    }
+
+}

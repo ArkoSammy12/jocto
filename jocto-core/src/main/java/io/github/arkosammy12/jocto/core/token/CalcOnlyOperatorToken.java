@@ -1,0 +1,32 @@
+package io.github.arkosammy12.jocto.core.token;
+
+import java.util.Optional;
+
+import io.github.arkosammy12.jocto.core.grammar.CalcOperatorLexeme;
+import io.github.arkosammy12.jocto.core.lexer.SourcePosition;
+import io.github.arkosammy12.jocto.core.parser.CalcOperation;
+
+public final class CalcOnlyOperatorToken extends IdentifierToken implements CalcOperatorToken {
+
+    private final CalcOperatorLexeme calcOperatorLexeme;
+
+    public CalcOnlyOperatorToken(CalcOperatorLexeme calcOperatorLexeme, SourcePosition sourcePosition) {
+        super(calcOperatorLexeme.getLexeme(), sourcePosition);
+        this.calcOperatorLexeme = calcOperatorLexeme;
+    }
+
+    @Override
+    public CalcOperation getCalcOperation() {
+        return this.calcOperatorLexeme.getCalcOperation();
+    }
+
+    @Override
+    public String toString() {
+        return "CalcOperatorToken[%s, operator=%s]".formatted(this.getBaseStringContents(), this.calcOperatorLexeme.name());
+    }
+
+    public static Optional<CalcOnlyOperatorToken> tryParse(String lexeme, SourcePosition sourcePosition) {
+        return Token.findMatching(lexeme, CalcOperatorLexeme.class, calcOperatorLexeme -> new CalcOnlyOperatorToken(calcOperatorLexeme, sourcePosition));
+    }
+
+}

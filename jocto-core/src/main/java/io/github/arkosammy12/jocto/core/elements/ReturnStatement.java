@@ -1,0 +1,24 @@
+package io.github.arkosammy12.jocto.core.elements;
+
+public final class ReturnStatement extends Statement {
+
+    public ReturnStatement(int offset) {
+        super(offset);
+    }
+
+    @Override
+    public int getSizeInBytes() {
+        return 2;
+    }
+
+    @Override
+    public BytesResult getBytes() {
+        return new BytesResult.Data(fromOpcode(0x00EE));
+    }
+
+    @Override
+    public String toString() {
+        return "ReturnStatement[%s]".formatted(this.getStringBaseContents());
+    }
+
+}
